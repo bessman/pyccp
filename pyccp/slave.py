@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__copyright__="""
+__copyright__ = """
     pySART - Simplified AUTOSAR-Toolkit for Python.
 
    (C) 2009-2016 by Christoph Schueler <cpu12.gems@googlemail.com>
@@ -35,6 +35,7 @@ from pyccp.logger import Logger
 def getLEWord(payload):
     return payload[1] << 8 | payload[0]
 
+
 def getBEWord(payload):
     return payload[0] << 8 | payload[1]
 
@@ -42,11 +43,10 @@ def getBEWord(payload):
 class SlaveState(enum.IntEnum):
 
     DISCONNECTED = 1
-    CONNECTED    = 2
+    CONNECTED = 2
 
 
 class Slave(object):
-
     def __init__(self, stationAddress, transport, memory):
         self.stationAddress = stationAddress
         self.transport = transport
@@ -73,39 +73,50 @@ class Slave(object):
     def getState(self):
         return self.state
 
-    def sendDTO(self, returnCode, counter, payload = []):
-        self.transport.send(self.masterAddress, ccp.DTOType.COMMAND_RETURN_MESSAGE, returnCode, counter, *payload)
+    def sendDTO(self, returnCode, counter, payload=[]):
+        self.transport.send(
+            self.masterAddress,
+            ccp.DTOType.COMMAND_RETURN_MESSAGE,
+            returnCode,
+            counter,
+            *payload
+        )
 
-    def sendDTOIfConnected(self, returnCode, counter, payload = []):
+    def sendDTOIfConnected(self, returnCode, counter, payload=[]):
         if self.state == SlaveState(SlaveState.CONNECTED):
-            self.transport.send(self.masterAddress, ccp.DTOType.COMMAND_RETURN_MESSAGE, returnCode, counter, *payload)
+            self.transport.send(
+                self.masterAddress,
+                ccp.DTOType.COMMAND_RETURN_MESSAGE,
+                returnCode,
+                counter,
+                *payload
+            )
 
     def commandHandler(self, cmo):
         cmd = cmo.data[0]
         counter = cmo.data[1]
-        payload = cmo.data[ 2 : ]
+        payload = cmo.data[2:]
         handler = self.COMMAND_HANDLERS.get(cmd, None)
         if handler:
             handler(self, counter, payload)
         else:
-            pass # TODO: CCP error handling.
+            pass  # TODO: CCP error handling.
 
     def onConnect(self, counter, payload):
         self.logger.debug("onConnect")
-        stationAddress = getLEWord(payload[0 : ])
-        #print("connecting", counter, payload)
+        stationAddress = getLEWord(payload[0:])
+        # print("connecting", counter, payload)
         if stationAddress == self.stationAddress:
             self.setState(SlaveState.CONNECTED)
             self.sendDTO(ccp.ReturnCodes.ACKNOWLEDGE, counter)
         else:
             self.setState(SlaveState.DISCONNECTED)
 
-
     def onGetCCPVersion(self, counter, payload):
         # This command is expected to be executed prior to the EXCHANGE_ID command.
         self.logger.debug("onGetCCPVersion")
         self.sendDTO(ccp.ReturnCodes.ACKNOWLEDGE, counter, ccp.CCP_VERSION)
-        #self.sendDTOIfConnected(ccp.ReturnCodes.ACKNOWLEDGE, counter, ccp.CCP_VERSION)
+        # self.sendDTOIfConnected(ccp.ReturnCodes.ACKNOWLEDGE, counter, ccp.CCP_VERSION)
 
     def onTest(self, counter, payload):
         self.logger.debug("onTest")
@@ -186,7 +197,7 @@ class Slave(object):
         ccp.CommandCodes.CONNECT: onConnect,
         ccp.CommandCodes.GET_CCP_VERSION: onGetCCPVersion,
         ccp.CommandCodes.TEST: onTest,
-        ccp.CommandCodes.EXCHANGE_ID:  onExchangeId,
+        ccp.CommandCodes.EXCHANGE_ID: onExchangeId,
         ccp.CommandCodes.SET_MTA: onSetMta,
         ccp.CommandCodes.DNLOAD: onDnload,
         ccp.CommandCodes.DNLOAD_6: onDnload6,
@@ -210,4 +221,3 @@ class Slave(object):
         ccp.CommandCodes.UNLOCK: onUnlock,
         ccp.CommandCodes.GET_SEED: onGetSeed,
     }
-

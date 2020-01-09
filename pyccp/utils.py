@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__copyright__="""
+__copyright__ = """
     pySART - Simplified AUTOSAR-Toolkit for Python.
 
    (C) 2009-2018 by Christoph Schueler <cpu12.gems@googlemail.com>
@@ -28,17 +28,21 @@ import os
 import sys
 import threading
 
-def slicer(iterable, sliceLength, converter = None):
+
+def slicer(iterable, sliceLength, converter=None):
     if converter is None:
         converter = type(iterable)
     length = len(iterable)
-    return [converter((iterable[item : item + sliceLength])) for item in range(0, length, sliceLength)]
+    return [
+        converter((iterable[item : item + sliceLength]))
+        for item in range(0, length, sliceLength)
+    ]
 
 
 def makeList(*args):
     result = []
     for arg in args:
-        if hasattr(arg, '__iter__'):
+        if hasattr(arg, "__iter__"):
             result.extend(list(arg))
         else:
             result.append(arg)
@@ -48,7 +52,7 @@ def makeList(*args):
 def intToArray(value):
     result = []
     while value:
-        result.append(value & 0xff)
+        result.append(value & 0xFF)
         value >>= 8
     if result:
         return list(reversed(result))
@@ -71,10 +75,12 @@ class Curry:
         return self.fun(*(self.pending + args), **kw)
 
 
-identity = lambda self,x: x
+identity = lambda self, x: x
+
 
 def getPythonVersion():
     return sys.version_info
+
 
 PYTHON_VERSION = getPythonVersion()
 
@@ -92,6 +98,7 @@ def createStringBuffer(*args):
     """
     return StringIO(*args)
 
+
 def binExtractor(fname, offset, length):
     """Extract a junk of data from a file.
     """
@@ -100,26 +107,30 @@ def binExtractor(fname, offset, length):
     data = fp.read(length)
     return data
 
+
 CYG_PREFIX = "/cygdrive/"
+
 
 def cygpathToWin(path):
     if path.startswith(CYG_PREFIX):
-        path = path[len(CYG_PREFIX) : ]
+        path = path[len(CYG_PREFIX) :]
         driveLetter = "{0}:\\".format(path[0])
-        path = path[2 : ].replace("/", "\\")
+        path = path[2:].replace("/", "\\")
         path = "{0}{1}".format(driveLetter, path)
     return path
 
 
 import ctypes
 
+
 class StructureWithEnums(ctypes.Structure):
     """Add missing enum feature to ctypes Structures.
     """
+
     _map = {}
 
     def __getattribute__(self, name):
-        _map = ctypes.Structure.__getattribute__(self, '_map')
+        _map = ctypes.Structure.__getattribute__(self, "_map")
         value = ctypes.Structure.__getattribute__(self, name)
         if name in _map:
             EnumClass = _map[name]
@@ -138,20 +149,26 @@ class StructureWithEnums(ctypes.Structure):
             if attr in self._map:
                 attrType = self._map[attr]
             value = getattr(self, attr)
-            result.append("    {0} [{1}] = {2!r};".format(attr, attrType.__name__, value))
+            result.append(
+                "    {0} [{1}] = {2!r};".format(attr, attrType.__name__, value)
+            )
         result.append("};")
-        return '\n'.join(result)
+        return "\n".join(result)
 
     __repr__ = __str__
 
 
 import subprocess
 
+
 class CommandError(Exception):
     pass
 
+
 def runCommand(cmd):
-    proc = subprocess.Popen(cmd, shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    proc = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     result = proc.communicate()
     proc.wait()
     if proc.returncode:
@@ -164,10 +181,10 @@ class SingletonBase(object):
 
     def __new__(cls, *args, **kws):
         # Double-Checked Locking
-        if not hasattr(cls, '_instance'):
+        if not hasattr(cls, "_instance"):
             try:
                 cls._lock.acquire()
-                if not hasattr(cls, '_instance'):
+                if not hasattr(cls, "_instance"):
                     cls._instance = super(SingletonBase, cls).__new__(cls)
             finally:
                 cls._lock.release()
@@ -175,9 +192,10 @@ class SingletonBase(object):
 
 
 class RepresentationMixIn(object):
-
     def __repr__(self):
-        keys = [k for k in self.__dict__ if not (k.startswith('__') and k.endswith('__'))]
+        keys = [
+            k for k in self.__dict__ if not (k.startswith("__") and k.endswith("__"))
+        ]
         result = []
         result.append("{0!s} {{".format(self.__class__.__name__))
         for key in keys:
@@ -192,19 +210,26 @@ class RepresentationMixIn(object):
                 line = "    {0!s} = '{1!s}'".format(key, value)
             result.append(line)
         result.append("}")
-        return '\n'.join(result)
+        return "\n".join(result)
+
 
 import mmap
 
-def memoryMap(filename, writeable = False):
+
+def memoryMap(filename, writeable=False):
     size = os.path.getsize(filename)
     fd = os.open(filename, os.O_RDWR if writeable else os.O_RDONLY)
-    return mmap.mmap(fd, size, access = mmap.ACCESS_WRITE if writeable else mmap.ACCESS_READ)
+    return mmap.mmap(
+        fd, size, access=mmap.ACCESS_WRITE if writeable else mmap.ACCESS_READ
+    )
+
 
 from unicodedata import normalize
 
+
 def nfc_equal(str1, str2):
-    return normalize('NFC', str1) == normalize('NFC', str2)
+    return normalize("NFC", str1) == normalize("NFC", str2)
+
 
 def fold_equal(str1, str2):
-    return (normalize('NFC', str1).casefold() == normalize('NFC', str2).casefold())
+    return normalize("NFC", str1).casefold() == normalize("NFC", str2).casefold()

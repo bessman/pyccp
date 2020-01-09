@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__copyright__="""
+__copyright__ = """
     pySART - Simplified AUTOSAR-Toolkit for Python.
 
    (C) 2009-2016 by Christoph Schueler <cpu12.gems@googlemail.com>
@@ -27,12 +27,13 @@ import logging
 
 from pyccp.utils import SingletonBase
 
+
 class Logger(SingletonBase):
 
-    LOGGER_BASE_NAME = 'pyccp'
+    LOGGER_BASE_NAME = "pyccp"
     FORMAT = "[%(levelname)s (%(name)s)]: %(message)s"
 
-    def __init__(self, name, level = logging.WARN):
+    def __init__(self, name, level=logging.WARN):
         self.logger = logging.getLogger("{0}.{1}".format(self.LOGGER_BASE_NAME, name))
         self.logger.setLevel(level)
         handler = logging.StreamHandler()
@@ -85,4 +86,3 @@ class Logger(SingletonBase):
         if isinstance(level, str):
             level = LEVEL_MAP.get(level.upper(), logging.WARN)
         self.logger.setLevel(level)
-

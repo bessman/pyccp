@@ -7,6 +7,4 @@
 [![Code Climate](https://codeclimate.com/github/pySART/pyccp/badges/gpa.svg)](https://codeclimate.com/github/pySART/pyccp)
 [![Issue Count](https://codeclimate.com/github/pySART/pyccp/badges/issue_count.svg)](https://codeclimate.com/github/pySART/pyccp)
 [![GPL License](http://img.shields.io/badge/license-GPL-blue.svg)](http://opensource.org/licenses/GPL-2.0)
-
-
-
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
