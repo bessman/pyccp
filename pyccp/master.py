@@ -23,157 +23,185 @@ __copyright__ = """
   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 """
 
-from collections import namedtuple
-import enum
-from pprint import pprint
-import struct
+from can import Bus
 
 from pyccp import ccp
 from pyccp.logger import Logger
 
 
-MTA0 = 0
-MTA1 = 1
+"""
+The MTA number (handle) is used to identify different transfer address
+locations (pointers). MTA0 is used by the commands DNLOAD, UPLOAD, DNLOAD_6,
+SELECT_CAL_PAGE, CLEAR_MEMORY, PROGRAM and PROGRAM_6. MTA1 is used by the
+MOVE command. See also command ‘MOVE’.
+"""
+MTA0_NUMBER = 0
+MTA1_NUMBER = 1
 
 
-class Master(ccp.CRO):
-    def __init__(self, transport):
+class Master:
+    def __init__(self, transport: Bus):
         self.slaveConnections = {}
-        self.transport = transport
-        self.transport.parent = self
+        self._transport = transport
         self.ctr = 0x00
+        self.mta0_extension = 0
+        self.mta0_address = 0
+        self.endianess = "big"
         self.logger = Logger("pyccp.master")
 
-    def sendCRO(self, canID, cmd, ctr, b0=0, b1=0, b2=0, b3=0, b4=0, b5=0):
-        """Transfer up to 6 data bytes from master to slave (ECU).
-        """
-        self.transport.send(canID, cmd, ctr, b0, b1, b2, b3, b4, b5)
+    def send(self, message):
+        self._transport.send(message)
+        self.ctr = (self.ctr + 1) % 0x100
 
-    ##
-    ## Mandatory Commands.
-    ##
-    def connect(self, canID, address):
-        h = (address & 0xFF00) >> 8
-        l = address & 0x00FF
-        self.sendCRO(canID, ccp.CommandCodes.CONNECT, self.ctr, l, h)
+    # #
+    # Mandatory Commands.
+    # #
 
-    def getCCPVersion(self, canID, major=2, minor=1):
-        self.sendCRO(canID, ccp.CommandCodes.GET_CCP_VERSION, self.ctr, major, minor)
-
-    def exchangeId(self, canID, b0=0, b1=0, b2=0, b3=0, b4=0, b5=0):
-        self.sendCRO(
-            canID, ccp.CommandCodes.EXCHANGE_ID, self.ctr, b0, b1, b2, b3, b4, b5
+    def connect(self, canID, station_address):
+        # Station address is always little endian per the CCP standard
+        cro = ccp.CommandReceiveObject(
+            canID,
+            ccp.CommandCodes.CONNECT,
+            self.ctr,
+            station_address.to_bytes(2, "little"),
         )
+        self.send(cro)
 
-    def setMta(self, canID, address, addressExtension=0x00, mta=MTA0):
-        address = struct.pack(">L", address)
-        self.sendCRO(
-            canID, ccp.CommandCodes.SET_MTA, self.ctr, mta, addressExtension, *address
+    def getCCPVersion(self, canID, major=ccp.CCP_VERSION[0], minor=ccp.CCP_VERSION[1]):
+        cro = ccp.CommandReceiveObject(
+            canID, ccp.CommandCodes.GET_CCP_VERSION, self.ctr, [major, minor]
         )
+        self.send(cro)
+
+    def exchangeId(self, canID, device_info=0):
+        cro = ccp.CommandReceiveObject(
+            canID,
+            ccp.CommandCodes.EXCHANGE_ID,
+            self.ctr,
+            device_info.to_bytes(6, self.endianess),
+        )
+        self.send(cro)
+
+    def setMta(self, canID, address, addressExtension=0x00, mta=MTA0_NUMBER):
+        cro = ccp.CommandReceiveObject(
+            canID,
+            ccp.CommandCodes.SET_MTA,
+            self.ctr,
+            [mta, addressExtension, *address.to_bytes(4, self.endianess)],
+        )
+        self.send(cro)
 
     def dnload(self, canID, size, data):
-        self.sendCRO(canID, ccp.CommandCodes.DNLOAD, self.ctr, size, *data)
+        cro = ccp.CommandReceiveObject(
+            canID,
+            ccp.CommandCodes.DNLOAD,
+            self.ctr,
+            [size, *data.to_bytes(size, self.endianess)],
+        )
+        self.send(cro)
 
     def upload(self, canID, size):
-        self.sendCRO(canID, ccp.CommandCodes.UPLOAD, self.ctr, size)
+        cro = ccp.CommandReceiveObject(canID, ccp.CommandCodes.UPLOAD, self.ctr, [size])
+        self.send(cro)
 
     def getDaqSize(self, canID, daqListNumber, address):
-        address = struct.pack(">L", address)
-        self.sendCRO(
+        cro = ccp.CommandReceiveObject(
             canID,
             ccp.CommandCodes.GET_DAQ_SIZE,
             self.ctr,
-            daqListNumber,
-            0x00,
-            *address
+            [daqListNumber, 0, *address.to_bytes(4, self.endianess)],
         )
+        self.send(cro)
 
     def setDaqPtr(self, canID, daqListNumber, odtNumber, elementNumber):
-        self.sendCRO(
+        cro = ccp.CommandReceiveObject(
             canID,
             ccp.CommandCodes.SET_DAQ_PTR,
             self.ctr,
-            daqListNumber,
-            odtNumber,
-            elementNumber,
+            [daqListNumber, odtNumber, elementNumber],
         )
+        self.send(cro)
 
     def writeDaq(self, canID, elementSize, addressExtension, address):
-        address = struct.pack(">L", address)
-        self.sendCRO(
+        cro = ccp.CommandReceiveObject(
             canID,
             ccp.CommandCodes.WRITE_DAQ,
             self.ctr,
-            elementSize,
-            addressExtension,
-            *address
+            [elementSize, addressExtension, *address.to_bytes(4, self.endianess)],
         )
+        self.send(cro)
 
     def startStop(
         self, canID, mode, daqListNumber, lastOdtNumber, eventChannel, ratePrescaler
     ):
-        ratePrescaler = struct.pack(">H", ratePrescaler)
-        self.sendCRO(
+        cro = ccp.CommandReceiveObject(
             canID,
             ccp.CommandCodes.START_STOP,
             self.ctr,
-            mode,
-            daqListNumber,
-            lastOdtNumber,
-            eventChannel,
-            *ratePrescaler
+            [
+                mode,
+                daqListNumber,
+                lastOdtNumber,
+                eventChannel,
+                *ratePrescaler.to_bytes(2, self.endianess),
+            ],
         )
+        self.send(cro)
 
-    def disconnect(self, canID, permanent, address):
-        address = struct.pack("<H", address)
-        self.sendCRO(
-            canID, ccp.CommandCodes.DISCONNECT, self.ctr, permanent, 0x00, *address
+    def disconnect(self, canID, permanent, station_address):
+        cro = ccp.CommandReceiveObject(
+            canID,
+            ccp.CommandCodes.DISCONNECT,
+            self.ctr,
+            [permanent, 0, *station_address.to_bytes(2, "little")],
         )
+        self.send(cro)
 
-    ##
-    ## Optional Commands.
-    ##
+    # #
+    # Optional Commands
+    # #
+
     def test(self, canID):
-        pass
+        raise NotImplementedError
 
     def dnload6(self, canID):
-        pass
+        raise NotImplementedError
 
     def shortUp(self, canID, size, address, addressExtension):
-        pass
+        raise NotImplementedError
 
     def startStopAll(self, canID):
-        pass
+        raise NotImplementedError
 
     def setSStatus(self, canID):
-        pass
+        raise NotImplementedError
 
     def getSStatus(self, canID):
-        pass
+        raise NotImplementedError
 
     def buildChksum(self, canID):
-        pass
+        raise NotImplementedError
 
     def clearMemory(self, canID):
-        pass
+        raise NotImplementedError
 
     def program(self, canID):
-        pass
+        raise NotImplementedError
 
     def program6(self, canID):
-        pass
+        raise NotImplementedError
 
     def move(self, canID):
-        pass
+        raise NotImplementedError
 
     def getActiveCalPage(self, canID):
-        pass
+        raise NotImplementedError
 
     def selectCalPage(self, canID):
-        pass
+        raise NotImplementedError
 
     def unlock(self, canID):
-        pass
+        raise NotImplementedError
 
     def getSeed(self, canID):
-        pass
+        raise NotImplementedError

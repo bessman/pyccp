@@ -23,10 +23,8 @@ __copyright__ = """
   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 """
 
-from collections import namedtuple
 import enum
-from pprint import pprint
-import struct
+from can import Bus, Message
 
 from pyccp import ccp
 from pyccp.logger import Logger
@@ -47,10 +45,9 @@ class SlaveState(enum.IntEnum):
 
 
 class Slave(object):
-    def __init__(self, stationAddress, transport, memory):
+    def __init__(self, stationAddress, transport: Bus, memory):
         self.stationAddress = stationAddress
         self.transport = transport
-        self.transport.parent = self
         self.masterAddress = 0x0815
         self._mta = 0x0000
         self.ctr = 0x00
@@ -73,24 +70,17 @@ class Slave(object):
     def getState(self):
         return self.state
 
-    def sendDTO(self, returnCode, counter, payload=[]):
-        self.transport.send(
-            self.masterAddress,
-            ccp.DTOType.COMMAND_RETURN_MESSAGE,
-            returnCode,
-            counter,
-            *payload
+    def sendDTO(self, returnCode, counter, payload=[0, 0, 0, 0, 0]):
+        payload = list(payload) + [0] * (5 - len(payload))
+        message = Message(
+            arbitration_id=self.masterAddress,
+            data=[ccp.DTOType.COMMAND_RETURN_MESSAGE, returnCode, counter, *payload],
         )
+        self.transport.send(message)
 
     def sendDTOIfConnected(self, returnCode, counter, payload=[]):
         if self.state == SlaveState(SlaveState.CONNECTED):
-            self.transport.send(
-                self.masterAddress,
-                ccp.DTOType.COMMAND_RETURN_MESSAGE,
-                returnCode,
-                counter,
-                *payload
-            )
+            self.sendDTO(returnCode, counter, payload)
 
     def commandHandler(self, cmo):
         cmd = cmo.data[0]

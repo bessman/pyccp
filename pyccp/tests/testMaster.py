@@ -1,69 +1,79 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import can
 import unittest
 
-from pyccp import ccp
 from pyccp.master import Master
 
 
 class TestMaster(unittest.TestCase):
     def setUp(self):
-        transport = ccp.MockTransport()
+        transport = can.Bus("test", bustype="virtual")
+        transport.receive_own_messages = True
         self.master = Master(transport)
         self.master.ctr = 0x27
 
     def tearDown(self):
+        self.master._transport.shutdown()
         del self.master
 
     def runTest(self, func, expectedResult, *params):
         getattr(self.master, func)(*params)
-        result = str(self.master.transport.message)
+        message = self.master._transport.recv(timeout=1)
+        addrFmt = "08X" if message.is_extended_id else "04X"
+        result = (
+            f"{message.arbitration_id:{addrFmt}}"
+            + "  "
+            + " ".join([f"{i:02X}" for i in message.data])
+        )
         self.assertEqual(result, expectedResult)
 
     def testConnect(self):
-        self.runTest("connect", "07E1  01 27 39 00 00 00 00 00", 0x7E1, 0x39)
+        self.runTest("connect", "000007E1  01 27 39 00 00 00 00 00", 0x7E1, 0x39)
 
     def testGetCCPVersion(self):
-        self.runTest("getCCPVersion", "07E1  1B 27 02 01 00 00 00 00", 0x7E1)
+        self.runTest("getCCPVersion", "000007E1  1B 27 02 01 00 00 00 00", 0x7E1)
 
     def testExchangeID(self):
-        self.runTest("exchangeId", "07E1  17 27 00 00 00 00 00 00", 0x7E1)
+        self.runTest("exchangeId", "000007E1  17 27 00 00 00 00 00 00", 0x7E1)
 
     def testSetMta(self):
         self.runTest(
-            "setMta", "07E1  02 27 00 02 34 00 20 00", 0x7E1, 0x34002000, 0x02, 0x00
+            "setMta", "000007E1  02 27 00 02 34 00 20 00", 0x7E1, 0x34002000, 0x02, 0x00
         )
 
     def testDnload(self):
         self.runTest(
             "dnload",
-            "07E1  03 27 05 10 11 12 13 14",
+            "000007E1  03 27 05 10 11 12 13 14",
             0x7E1,
             5,
-            bytearray([0x10, 0x11, 0x12, 0x13, 0x14]),
+            0x1011121314,
         )
 
     def testUpload(self):
-        self.runTest("upload", "07E1  04 23 04 00 00 00 00 00", 0x7E1, 4)
-
-    def testUpload(self):
         self.runTest(
-            "getDaqSize", "07E1  14 27 03 00 01 02 03 04", 0x7E1, 3, 0x01020304
+            "getDaqSize", "000007E1  14 27 03 00 01 02 03 04", 0x7E1, 3, 0x01020304
         )
 
     def testSetDaqPtr(self):
-        self.runTest("setDaqPtr", "07E1  15 27 03 05 02 00 00 00", 0x7E1, 3, 5, 2)
+        self.runTest("setDaqPtr", "000007E1  15 27 03 05 02 00 00 00", 0x7E1, 3, 5, 2)
 
     def testWriteDaqPtr(self):
         self.runTest(
-            "writeDaq", "07E1  16 27 02 01 02 00 42 00", 0x7E1, 0x02, 0x01, 0x02004200
+            "writeDaq",
+            "000007E1  16 27 02 01 02 00 42 00",
+            0x7E1,
+            0x02,
+            0x01,
+            0x02004200,
         )
 
     def testStartStopPtr(self):
         self.runTest(
             "startStop",
-            "07E1  06 27 01 03 07 02 00 01",
+            "000007E1  06 27 01 03 07 02 00 01",
             0x7E1,
             0x01,
             0x03,
@@ -73,7 +83,9 @@ class TestMaster(unittest.TestCase):
         )
 
     def testDisconnect(self):
-        self.runTest("disconnect", "07E1  07 27 00 00 08 02 00 00", 0x7E1, 0x00, 0x0208)
+        self.runTest(
+            "disconnect", "000007E1  07 27 00 00 08 02 00 00", 0x7E1, 0x00, 0x0208
+        )
 
 
 if __name__ == "__main__":

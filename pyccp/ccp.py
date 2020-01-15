@@ -23,6 +23,7 @@ __copyright__ = """
   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 """
 
+import can
 from collections import namedtuple
 import enum
 from pprint import pprint
@@ -99,9 +100,18 @@ class State(enum.IntEnum):
     pass
 
 
-class CRO(object):
+class CommandReceiveObject(can.Message):
     """Command Receive Object.
     """
+
+    def __init__(self, arbitration_id, command_code, ctr, data):
+        data = [command_code, ctr] + list(data)
+        # Pad data array to eight bytes
+        data = data + [0] * (8 - len(data))
+        if len(data) > 8:
+            raise ValueError("CRO data must be six bytes or fewer")
+
+        super().__init__(arbitration_id=arbitration_id, data=data)
 
 
 class DTO(object):
@@ -153,47 +163,6 @@ class DAQList(object):
     360c
     360d
     """
-
-
-# File format not recognized.
-
-
-class CANMessageObject(object):
-    def __init__(self, canID, dlc, data, extendedAddr=False, rtr=False):
-        self.canID = canID
-        self.dlc = dlc
-        self.data = data
-        self.extendedAddr = extendedAddr
-        self.rtr = rtr
-
-    def __str__(self):
-        addrFmt = "[{:08X}]  " if self.extendedAddr else "{:04X}  "
-        fmt = addrFmt + "{}"
-        return fmt.format(self.canID, " ".join(["{:02X}".format(x) for x in self.data]))
-
-    __repr__ = __str__
-
-
-class MockTransport(object):
-    def __init__(self):
-        self.parent = None
-
-    def send(self, canID, b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0, b7=0):
-        self.message = CANMessageObject(
-            canID, 8, bytearray((b0, b1, b2, b3, b4, b5, b6, b7))
-        )
-        # print("Sending: {}".format(self.message))
-
-    def receive(self, canID, b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0, b7=0):
-        self.message = CANMessageObject(
-            canID, 8, bytearray((b0, b1, b2, b3, b4, b5, b6, b7))
-        )
-        self.parent.receive(self.message)
-
-    def __str__(self):
-        return "[Current Message]: {}".format(self.message)
-
-    __repr__ = __str__
 
 
 class Memory(object):
