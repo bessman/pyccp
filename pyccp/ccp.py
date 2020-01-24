@@ -91,9 +91,21 @@ class ReturnCodes(enum.IntEnum):
     RESOURCE_FUNCTION_NOT_AVAILABLE = 0x36  # C3 FAULT
 
 
+class MemoryTransferAddressNumber(enum.IntEnum):
+    """
+    The MTA number (handle) is used to identify different transfer address
+    locations (pointers). MTA0 is used by the commands DNLOAD, UPLOAD, DNLOAD_6,
+    SELECT_CAL_PAGE, CLEAR_MEMORY, PROGRAM and PROGRAM_6. MTA1 is used by the
+    MOVE command. See also command ‘MOVE’.
+    """
+
+    MTA0_NUMBER = 0
+    MTA1_NUMBER = 1
+
+
 class DTOType(enum.IntEnum):
-    COMMAND_RETURN_MESSAGE = 255
-    EVENT_MESSAGE = 254
+    COMMAND_RETURN_MESSAGE = 0xFF
+    EVENT_MESSAGE = 0xFE
 
 
 class State(enum.IntEnum):
@@ -114,37 +126,85 @@ class CommandReceiveObject(can.Message):
         super().__init__(arbitration_id=arbitration_id, data=data)
 
 
-class DTO(object):
+class DataTransmissionObject(can.Message):
     """Data Transmission Object.
     """
 
-    COMMAND_RETURN_MESSAGE = 255
-    EVENT_MESSAGE = 254
-
-    def send(self, pid, err, ctr, b0=0, b1=0, b2=0, b3=0, b4=0):
-        """Transfer up to 5 data bytes from slave (ECU) to master.
-        """
-        pass
+    def __init__(self, arbitration_id, pid, data=[]):
+        self.pid = pid
+        data = [pid] + data
+        super().__init__(arbitration_id=arbitration_id, data=data)
 
 
-class CRM(DTO):
+class CommandReturnMessage(DataTransmissionObject):
     """Command Return Message.
     """
 
+    def __init__(self, arbitration_id, return_code, ctr, crm_data):
+        self.return_code = return_code
+        self.ctr = ctr
+        self.crm_data = crm_data
+        super().__init__(
+            arbitration_id=arbitration_id,
+            pid=DTOType.COMMAND_RETURN_MESSAGE,
+            data=[return_code, ctr] + list(crm_data),
+        )
 
-class EVM(DTO):
+    def __repr__(self) -> str:
+        args = [
+            "timestamp={}".format(self.timestamp),
+            "return_code={:#x}".format(self.return_code),
+            "counter={:#x}".format(self.ctr),
+        ]
+
+        crm_data = ["{:#02x}".format(byte) for byte in self.crm_data]
+        args += ["crm_data=[{}]".format(", ".join(crm_data))]
+
+        return "ccp.CommandReturnMessage({})".format(", ".join(args))
+
+
+class EventMessage(DataTransmissionObject):
     """Event Message.
     """
 
+    def __init__(self, arbitration_id, return_code):
+        self.return_code = return_code
+        super().__init__(
+            arbitration_id=arbitration_id,
+            pid=DTOType.EVENT_MESSAGE,
+            data=[return_code] + 6 * [0],
+        )
 
-class DAQ(object):
+    def __repr__(self) -> str:
+        args = [
+            "timestamp={}".format(self.timestamp),
+            "return_code={:#x}".format(self.return_code),
+        ]
+
+        return "ccp.EventMessage({})".format(", ".join(args))
+
+
+class DataAcquisitionMessage(DataTransmissionObject):
     """Data Acquisition Message.
     """
 
-    def send(self, pid, b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0):
-        """Transfer up to 7 data bytes from slave (ECU) to master.
-        """
-        pass
+    def __init__(self, arbitration_id, odt_number, daq_data):
+        self.odt_number = odt_number
+        self.daq_data = daq_data
+        super().__init__(
+            arbitration_id=arbitration_id, pid=odt_number, data=list(daq_data)
+        )
+
+    def __repr__(self) -> str:
+        args = [
+            "timestamp={}".format(self.timestamp),
+            "odt_number={:#x}".format(self.odt_number),
+        ]
+
+        daq_data = ["{:#02x}".format(byte) for byte in self.daq_data]
+        args += ["daq_data=[{}]".format(", ".join(daq_data))]
+
+        return "ccp.DataAcquisitionMessage({})".format(", ".join(args))
 
 
 class ODT(object):
@@ -168,3 +228,8 @@ class DAQList(object):
 class Memory(object):
     def __init__(self):
         pass
+
+
+class CcpError(can.CanError):
+    """Indicates an error with the CCP communication.
+    """
