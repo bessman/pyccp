@@ -24,58 +24,10 @@ __copyright__ = """
 """
 
 import can
-import queue
 
 from pyccp import ccp
+from pyccp.sorter import CCPMessageSorter
 from pyccp.logger import Logger
-
-
-class DtoSorter(can.Listener):
-    def __init__(self, dto_id=None):
-        self.dto_id = dto_id
-        self._crm_queue = queue.Queue()
-        self._evm_queue = queue.Queue()
-        self._daq_queue = queue.Queue()
-
-    def on_message_received(self, msg):
-        if self.dto_id is not None:
-            if msg.arbitration_id == self.dto_id:
-                pass
-            else:
-                raise ValueError("Message ID does not match DTO ID")
-
-        pid = msg.data[0]
-        if pid == ccp.DTOType.COMMAND_RETURN_MESSAGE:
-            self._crm_queue.put(msg)
-        elif pid == ccp.DTOType.EVENT_MESSAGE:
-            self._evm_queue.put(msg)
-        else:
-            # DTO contains a Data Acquisiton Message
-            self._daq_queue.put(msg)
-
-    def get_command_return_message(self, timeout=0.5):
-        msg = self._crm_queue.get(timeout=timeout)
-        crm = ccp.CommandReturnMessage(
-            arbitration_id=msg.arbitration_id,
-            return_code=msg.data[1],
-            ctr=msg.data[2],
-            crm_data=msg.data[3:],
-        )
-        return crm
-
-    def get_event_message(self, timeout=0.5):
-        msg = self._evm_queue.get(timeout=timeout)
-        evm = ccp.EVM(arbitration_id=msg.arbitration_id, return_code=msg.data[1])
-        return evm
-
-    def get_data_acquisition_message(self, timeout=0.5):
-        msg = self._daq_queue.get(timeout=timeout)
-        daq = ccp.DataAcquisitionMessage(
-            arbitration_id=msg.arbitration_id,
-            odt_number=msg.data[0],
-            daq_data=msg.data[1:],
-        )
-        return daq
 
 
 class Master:
@@ -86,7 +38,7 @@ class Master:
         self._transport.set_filters(
             [{"can_id": dto_id, "can_mask": 0x1FFFFFFF, "extended": True}]
         )
-        self._queue = DtoSorter(dto_id)
+        self._queue = CCPMessageSorter(dto_id, cro_id)
         self._notifier = can.Notifier(self._transport, [self._queue])
         self.ctr = 0x00
         self.mta0_extension = 0

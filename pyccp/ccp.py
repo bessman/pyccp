@@ -116,38 +116,82 @@ class CommandReceiveObject(can.Message):
     """Command Receive Object.
     """
 
-    def __init__(self, arbitration_id, command_code, ctr, data):
-        data = [command_code, ctr] + list(data)
+    def __init__(
+        self,
+        arbitration_id,
+        command_code,
+        ctr,
+        cro_data,
+        timestamp=0,
+        channel=None,
+        is_extended_id=True,
+    ):
+        self.command_code = command_code
+        self.ctr = ctr
+        self.cro_data = cro_data
+        data = [command_code, ctr] + list(cro_data)
         # Pad data array to eight bytes
         data = data + [0] * (8 - len(data))
         if len(data) > 8:
             raise ValueError("CRO data must be six bytes or fewer")
 
-        super().__init__(arbitration_id=arbitration_id, data=data)
+        super().__init__(
+            arbitration_id=arbitration_id,
+            data=data,
+            timestamp=timestamp,
+            channel=channel,
+            is_extended_id=is_extended_id,
+        )
 
 
 class DataTransmissionObject(can.Message):
     """Data Transmission Object.
     """
 
-    def __init__(self, arbitration_id, pid, data=[]):
+    def __init__(
+        self,
+        arbitration_id,
+        pid,
+        dto_data=[],
+        timestamp=0,
+        channel=None,
+        is_extended_id=True,
+    ):
         self.pid = pid
-        data = [pid] + data
-        super().__init__(arbitration_id=arbitration_id, data=data)
+        data = [pid] + dto_data
+        super().__init__(
+            arbitration_id=arbitration_id,
+            data=data,
+            timestamp=timestamp,
+            channel=channel,
+            is_extended_id=is_extended_id,
+        )
 
 
 class CommandReturnMessage(DataTransmissionObject):
     """Command Return Message.
     """
 
-    def __init__(self, arbitration_id, return_code, ctr, crm_data):
+    def __init__(
+        self,
+        arbitration_id,
+        return_code,
+        ctr,
+        crm_data,
+        timestamp=0,
+        channel=None,
+        is_extended_id=True,
+    ):
         self.return_code = return_code
         self.ctr = ctr
         self.crm_data = crm_data
         super().__init__(
             arbitration_id=arbitration_id,
             pid=DTOType.COMMAND_RETURN_MESSAGE,
-            data=[return_code, ctr] + list(crm_data),
+            dto_data=[return_code, ctr] + list(crm_data),
+            timestamp=timestamp,
+            channel=channel,
+            is_extended_id=is_extended_id,
         )
 
     def __repr__(self) -> str:
@@ -167,12 +211,22 @@ class EventMessage(DataTransmissionObject):
     """Event Message.
     """
 
-    def __init__(self, arbitration_id, return_code):
+    def __init__(
+        self,
+        arbitration_id,
+        return_code,
+        timestamp=0,
+        channel=None,
+        is_extended_id=True,
+    ):
         self.return_code = return_code
         super().__init__(
             arbitration_id=arbitration_id,
             pid=DTOType.EVENT_MESSAGE,
-            data=[return_code] + 6 * [0],
+            dto_data=[return_code] + 6 * [0],
+            timestamp=timestamp,
+            channel=channel,
+            is_extended_id=is_extended_id,
         )
 
     def __repr__(self) -> str:
@@ -188,11 +242,24 @@ class DataAcquisitionMessage(DataTransmissionObject):
     """Data Acquisition Message.
     """
 
-    def __init__(self, arbitration_id, odt_number, daq_data):
+    def __init__(
+        self,
+        arbitration_id,
+        odt_number,
+        daq_data,
+        timestamp=0,
+        channel=None,
+        is_extended_id=True,
+    ):
         self.odt_number = odt_number
         self.daq_data = daq_data
         super().__init__(
-            arbitration_id=arbitration_id, pid=odt_number, data=list(daq_data)
+            arbitration_id=arbitration_id,
+            pid=odt_number,
+            dto_data=list(daq_data),
+            timestamp=timestamp,
+            channel=channel,
+            is_extended_id=is_extended_id,
         )
 
     def __repr__(self) -> str:
