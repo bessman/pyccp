@@ -143,6 +143,167 @@ class CommandReceiveObject(can.Message):
             is_extended_id=is_extended_id,
         )
 
+    def __get_bytes(self, start, length, byteorder="big"):
+        return hex(
+            int.from_bytes(self.cro_data[start : start + length], byteorder=byteorder)
+        )
+
+    def parse(self):
+        field_strings = [CommandCodes(self.command_code).name]
+
+        if self.command_code == CommandCodes.ACTION_SERVICE:
+            action_service_number = self.__get_bytes(0, 2)
+            field_strings.append(action_service_number)
+            parameters = self.__get_bytes(2, 4)
+
+            if parameters != "0x0":
+                field_strings.append(parameters)
+
+        elif self.command_code == CommandCodes.BUILD_CHKSUM:
+            block_size = self.__get_bytes(0, 4)
+            field_strings.append(block_size)
+        elif self.command_code == CommandCodes.CLEAR_MEMORY:
+            memory_size = self.__get_bytes(0, 4)
+            field_strings.append(memory_size)
+        elif self.command_code == CommandCodes.CONNECT:
+            station_address = self.__get_bytes(0, 2, "little")
+            field_strings.append(station_address)
+        elif self.command_code == CommandCodes.DIAG_SERVICE:
+            diagnostic_service_number = self.__get_bytes(0, 2)
+            field_strings.append(diagnostic_service_number)
+            parameters = self.__get_bytes(2, 4)
+
+            if parameters != "0x0":
+                field_strings.append(parameters)
+
+        elif self.command_code == CommandCodes.DISCONNECT:
+            permanence = self.__get_bytes(0, 1)
+            field_strings.append(permanence)
+            station_address = self.__get_bytes(2, 2, "little")
+            field_strings.append(station_address)
+        elif self.command_code == CommandCodes.DNLOAD:
+            data_size = self.__get_bytes(0, 1)
+            field_strings.append(data_size)
+            data = self.__get_bytes(1, 5)
+            field_strings.append(data)
+        elif self.command_code == CommandCodes.DNLOAD_6:
+            data = self.__get_bytes(0, 6)
+            field_strings.append(data)
+        elif self.command_code == CommandCodes.EXCHANGE_ID:
+            device_info = self.__get_bytes(0, 6)
+
+            if device_info != "0x0":
+                field_strings.append(device_info)
+
+        elif self.command_code == CommandCodes.GET_ACTIVE_CAL_PAGE:
+            pass
+        elif self.command_code == CommandCodes.GET_CCP_VERSION:
+            main = self.__get_bytes(0, 1)
+            field_strings.append(main)
+            release = self.__get_bytes(1, 1)
+            field_strings.append(release)
+        elif self.command_code == CommandCodes.GET_DAQ_SIZE:
+            daq_no = self.__get_bytes(0, 1)
+            field_strings.append(daq_no)
+            dto_id = self.__get_bytes(2, 4)
+            field_strings.append(dto_id)
+        elif self.command_code == CommandCodes.GET_SEED:
+            resource_mask = self.__get_bytes(0, 1)
+            field_strings.append(resource_mask)
+        elif self.command_code == CommandCodes.GET_S_STATUS:
+            pass
+        elif self.command_code == CommandCodes.MOVE:
+            data_size = self.__get_bytes(0, 4)
+            field_strings.append(data_size)
+        elif self.command_code == CommandCodes.PROGRAM:
+            data_size = self.__get_bytes(0, 1)
+            field_strings.append(data_size)
+            data = self.__get_bytes(1, 5)
+            field_strings.append(data)
+        elif self.command_code == CommandCodes.PROGRAM_6:
+            data = self.__get_bytes(0, 6)
+            field_strings.append(data)
+        elif self.command_code == CommandCodes.SELECT_CAL_PAGE:
+            pass
+        elif self.command_code == CommandCodes.SET_DAQ_PTR:
+            daq_list_no = self.__get_bytes(0, 1)
+            field_strings.append(daq_list_no)
+            odt_no = self.__get_bytes(1, 1)
+            field_strings.append(odt_no)
+            element_no = self.__get_bytes(2, 1)
+            field_strings.append(element_no)
+        elif self.command_code == CommandCodes.SET_MTA:
+            mta_number = self.__get_bytes(0, 1)
+            field_strings.append(mta_number)
+            address_extension = self.__get_bytes(1, 1)
+            field_strings.append(address_extension)
+            address = self.__get_bytes(2, 4)
+            field_strings.append(address)
+        elif self.command_code == CommandCodes.SET_S_STATUS:
+            status_bits = self.__get_bytes(0, 1)
+            field_strings.append(status_bits)
+        elif self.command_code == CommandCodes.SHORT_UP:
+            data_size = self.__get_bytes(0, 1)
+            field_strings.append(data_size)
+            address_extension = self.__get_bytes(1, 1)
+            field_strings.append(address_extension)
+            address = self.__get_bytes(2, 4)
+            field_strings.append(address)
+        elif self.command_code == CommandCodes.START_STOP:
+            mode = self.__get_bytes(0, 1)
+            field_strings.append(mode)
+            daq_list_number = self.__get_bytes(1, 1)
+            field_strings.append(daq_list_number)
+            last_odt_number = self.__get_bytes(2, 1)
+            field_strings.append(last_odt_number)
+            event_channel_number = self.__get_bytes(3, 1)
+            field_strings.append(event_channel_number)
+            transmission_rate_prescaler = self.__get_bytes(4, 2)
+            field_strings.append(transmission_rate_prescaler)
+        elif self.command_code == CommandCodes.START_STOP_ALL:
+            mode = self.__get_bytes(0, 1)
+            field_strings.append(mode)
+        elif self.command_code == CommandCodes.TEST:
+            station_address = self.__get_bytes(0, 2, "little")
+            field_strings.append(station_address)
+        elif self.command_code == CommandCodes.UNLOCK:
+            key = self.__get_bytes(0, 6)
+            field_strings.append(key)
+        elif self.command_code == CommandCodes.UPLOAD:
+            data_size = self.__get_bytes(0, 1)
+            field_strings.append(data_size)
+        elif self.command_code == CommandCodes.WRITE_DAQ:
+            daq_element_size = self.__get_bytes(0, 1)
+            field_strings.append(daq_element_size)
+            address_extension = self.__get_bytes(1, 1)
+            field_strings.append(address_extension)
+            address = self.__get_bytes(2, 4)
+            field_strings.append(address)
+        else:
+            pass
+
+        return "  ".join(field_strings).strip()
+
+    def __repr__(self) -> str:
+        args = [
+            "timestamp={}".format(self.timestamp),
+            "command_code={:#x}".format(self.command_code),
+            "counter={:#x}".format(self.ctr),
+        ]
+
+        crm_data = ["{:#02x}".format(byte) for byte in self.cro_data]
+        args += ["cro_data=[{}]".format(", ".join(crm_data))]
+
+        return "ccp.CommandReceiveObject({})".format(", ".join(args))
+
+    def __str__(self) -> str:
+        field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
+        field_strings.append("CRO")
+        field_strings.append(str(self.ctr))
+        field_strings.append(self.parse())
+
+        return "  ".join(field_strings).strip()
+
 
 class DataTransmissionObject(can.Message):
     """Data Transmission Object.
@@ -206,6 +367,15 @@ class CommandReturnMessage(DataTransmissionObject):
 
         return "ccp.CommandReturnMessage({})".format(", ".join(args))
 
+    def __str__(self) -> str:
+        field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
+        field_strings.append("CRM")
+        field_strings.append(ReturnCodes(self.return_code).name)
+        field_strings.append(str(self.ctr))
+        field_strings.append(str(list(self.crm_data)))
+
+        return "  ".join(field_strings).strip()
+
 
 class EventMessage(DataTransmissionObject):
     """Event Message.
@@ -236,6 +406,13 @@ class EventMessage(DataTransmissionObject):
         ]
 
         return "ccp.EventMessage({})".format(", ".join(args))
+
+    def __str__(self) -> str:
+        field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
+        field_strings.append("EventMessage")
+        field_strings.append(ReturnCodes(self.return_code).name)
+
+        return "  ".join(field_strings).strip()
 
 
 class DataAcquisitionMessage(DataTransmissionObject):
@@ -272,6 +449,14 @@ class DataAcquisitionMessage(DataTransmissionObject):
         args += ["daq_data=[{}]".format(", ".join(daq_data))]
 
         return "ccp.DataAcquisitionMessage({})".format(", ".join(args))
+
+    def __str__(self) -> str:
+        field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
+        field_strings.append("DAQ")
+        field_strings.append(str(self.odt_number))
+        field_strings.append(str(list(self.daq_data)))
+
+        return "  ".join(field_strings).strip()
 
 
 class ODT(object):
