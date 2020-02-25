@@ -477,6 +477,17 @@ class DAQList(object):
     """
 
 
+class Signal:
+    """
+    CCP signal.
+    """
+
+    def __init__(self, memory_address, size):
+        self.memory_address = memory_address
+        self.size = size
+        self.odt_number = None
+
+
 class Memory(object):
     def __init__(self):
         pass
