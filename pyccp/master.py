@@ -46,25 +46,6 @@ class Master:
         self.endianess = "big"
         self.logger = Logger("pyccp.master")
 
-    def _send(self, message: can.Message):
-        """
-        Simple shim around can.Bus.send that keeps track of the Command Receive
-        Object counter.
-
-        Parameters
-        ----------
-        message : can.Message
-
-        Returns
-        -------
-        None.
-
-        """
-
-        # Pre-increment counter for easier checking of response
-        self.ctr = (self.ctr + 1) % 0x100
-        self._transport.send(message)
-
     def _receive(self) -> bytearray:
         """
         Raises
@@ -79,15 +60,18 @@ class Master:
         -------
         bytearray
             Five data bytes.
-
         """
 
         crm = self._queue.get_command_return_message()
         if crm.ctr == self.ctr:
+            self.ctr = (self.ctr + 1) % 0x100
+
             if crm.return_code == ccp.ReturnCodes.ACKNOWLEDGE:
                 return crm.crm_data
+            else:
+                raise ccp.CcpError(ccp.ReturnCodes(crm.return_code).name)
         else:
-            raise ccp.CcpError(ccp.ReturnCodes(crm.return_code), crm.ctr, self.ctr)
+            raise ccp.CcpError("Counter mismatch")
 
     def stop(self):
         self._notifier.stop()
@@ -121,7 +105,7 @@ class Master:
             self.ctr,
             station_address.to_bytes(2, "little"),
         )
-        self._send(cro)
+        self._transport.send(cro)
         self._receive()
 
     def getCCPVersion(
@@ -147,7 +131,7 @@ class Master:
         cro = ccp.CommandReceiveObject(
             self.cro_id, ccp.CommandCodes.GET_CCP_VERSION, self.ctr, [major, minor]
         )
-        self._send(cro)
+        self._transport.send(cro)
         data = self._receive()
         return (data[0], data[1])
 
@@ -176,7 +160,7 @@ class Master:
             self.ctr,
             device_info.to_bytes(6, self.endianess),
         )
-        self._send(cro)
+        self._transport.send(cro)
         size, dtype, availability, protection, _ = self._receive()
         return (size, dtype, availability, protection)
 
@@ -213,7 +197,7 @@ class Master:
             self.ctr,
             [mta, addressExtension, *address.to_bytes(4, self.endianess)],
         )
-        self._send(cro)
+        self._transport.send(cro)
         self._receive()
 
     def dnload(self, size: int, data: int) -> tuple:
@@ -244,7 +228,7 @@ class Master:
             self.ctr,
             [size, *data.to_bytes(size, self.endianess)],
         )
-        self._send(cro)
+        self._transport.send(cro)
         data = self._receive()
         return (data[0], data[1:])
 
@@ -270,7 +254,7 @@ class Master:
         cro = ccp.CommandReceiveObject(
             self.cro_id, ccp.CommandCodes.UPLOAD, self.ctr, [size]
         )
-        self._send(cro)
+        self._transport.send(cro)
         data = self._receive()
         return data[:size]
 
@@ -308,7 +292,7 @@ class Master:
             self.ctr,
             [daqListNumber, 0, *dto_id.to_bytes(4, self.endianess)],
         )
-        self._send(cro)
+        self._transport.send(cro)
         data = self._receive()
         return (data[0], data[1])
 
@@ -337,7 +321,7 @@ class Master:
             self.ctr,
             [daqListNumber, odtNumber, elementNumber],
         )
-        self._send(cro)
+        self._transport.send(cro)
         self._receive()
 
     def writeDaq(self, elementSize: int, addressExtension: int, address: int):
@@ -374,7 +358,7 @@ class Master:
             self.ctr,
             [elementSize, addressExtension, *address.to_bytes(4, self.endianess)],
         )
-        self._send(cro)
+        self._transport.send(cro)
         self._receive()
 
     def startStop(
@@ -429,7 +413,7 @@ class Master:
                 *ratePrescaler.to_bytes(2, "big"),
             ],
         )
-        self._send(cro)
+        self._transport.send(cro)
         self._receive()
 
     def disconnect(self, permanent: int, station_address: int):
@@ -461,7 +445,7 @@ class Master:
             self.ctr,
             [permanent, 0, *station_address.to_bytes(2, "little")],
         )
-        self._send(cro)
+        self._transport.send(cro)
         self._receive()
 
     # #
@@ -506,7 +490,7 @@ class Master:
         cro = ccp.CommandReceiveObject(
             self.cro_id, ccp.CommandCodes.SET_S_STATUS, self.ctr, [status_bits]
         )
-        self._send(cro)
+        self._transport.send(cro)
         self._receive()
 
     def getSStatus(self):

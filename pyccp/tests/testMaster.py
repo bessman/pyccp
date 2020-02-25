@@ -17,7 +17,7 @@ class TestMaster(unittest.TestCase):
         self.acknowledge = ccp.CommandReturnMessage(
             arbitration_id=0x321,
             return_code=ccp.ReturnCodes.ACKNOWLEDGE,
-            ctr=self.master.ctr + 1,
+            ctr=self.master.ctr,
             crm_data=5 * [0],
         )
 
