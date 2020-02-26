@@ -26,7 +26,7 @@ __copyright__ = """
 import can
 
 from pyccp import ccp
-from pyccp.sorter import CCPMessageSorter
+from pyccp.listeners import CCPMessageSorter
 from pyccp.logger import Logger
 
 
