@@ -24,6 +24,7 @@ __copyright__ = """
 """
 
 import can
+import cantools
 from collections import namedtuple
 import enum
 from pprint import pprint
@@ -459,33 +460,102 @@ class DataAcquisitionMessage(DataTransmissionObject):
         return "  ".join(field_strings).strip()
 
 
-class ODT(object):
-    """Object Descriptor Table.
-    """
+class ObjectDescriptorTable(cantools.database.Message):
+
+    def __init__(self,
+                 frame_id,
+                 length,
+                 elements,
+                 number,
+                 name=None,
+                 comment=None,
+                 is_extended_frame=True,):
+        self._number = number
+
+        if name is None:
+            name = str(number)
+
+        super().__init__(frame_id=frame_id,
+                         name=name,
+                         length=length,
+                         signals=elements,
+                         comment=comment,
+                         is_extended_frame=is_extended_frame,)
+        self._elements = self._signals
+
+    @property
+    def number(self):
+        """ODT number.
+        """
+
+        return self._number
+
+    @property
+    def elements(self):
+        """Elements of the ODT.
+        """
+
+        return self._elements
 
 
-class DAQList(object):
-    """Data Acquisition List.
-    """
+class Element(cantools.database.Signal):
+    def __init__(self,
+                 name,
+                 start,
+                 length,
+                 address,
+                 extension=0,
+                 byte_order='little_endian',
+                 is_signed=False,
+                 initial=None,
+                 scale=1,
+                 offset=0,
+                 minimum=None,
+                 maximum=None,
+                 unit=None,
+                 choices=None,
+                 comment=None,
+                 is_float=False,
+                 decimal=None,):
+        self._address = address
+        self._extension = extension
+        super().__init__(name=name,
+                         start=start,
+                         length=length,
+                         byte_order=byte_order,
+                         is_signed=is_signed,
+                         initial=initial,
+                         scale=scale,
+                         offset=offset,
+                         minimum=minimum,
+                         maximum=maximum,
+                         unit=unit,
+                         choices=choices,
+                         comment=comment,
+                         is_float=is_float,
+                         decimal=decimal,)
 
-    """
-    2401
-    360a
-    360b
-    360c
-    360d
-    """
+    @property
+    def address(self):
+        """The element's memory address in the slave ECU.
+        """
 
+        return self._address
 
-class Signal:
-    """
-    CCP signal.
-    """
+    @address.setter
+    def address(self, value):
+        self._address = value
 
-    def __init__(self, memory_address, size):
-        self.memory_address = memory_address
-        self.size = size
-        self.odt_number = None
+    @property
+    def extension(self):
+        """The element's address extension.
+        """
+
+        return self._extension
+
+    @extension.setter
+    def extension(self, value):
+        self._extension = value
 
 
 class Memory(object):
