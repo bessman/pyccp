@@ -30,7 +30,7 @@ from pyccp import ccp
 
 
 class CCPMessageSorter(can.Listener):
-    def __init__(self, dto_id, cro_id):
+    def __init__(self, dto_id: int, cro_id: int):
         self.dto_id = dto_id
         self.cro_id = cro_id
         self._crm_queue = queue.Queue()
@@ -38,7 +38,7 @@ class CCPMessageSorter(can.Listener):
         self._daq_queue = queue.Queue()
         self._cro_queue = queue.Queue()
 
-    def on_message_received(self, msg):
+    def on_message_received(self, msg: can.Message):
         if msg.arbitration_id == self.dto_id:
             pid = msg.data[0]
 
@@ -87,14 +87,14 @@ class CCPMessageSorter(can.Listener):
         else:
             pass
 
-    def get_command_return_message(self, timeout=0.5):
+    def get_command_return_message(self, timeout: float = 0.5):
         return self._crm_queue.get(timeout=timeout)
 
     def get_event_message(self, timeout=0.5):
         return self._evm_queue.get(timeout=timeout)
 
-    def get_data_acquisition_message(self, timeout=0.5):
+    def get_data_acquisition_message(self, timeout: float = 0.5):
         return self._daq_queue.get(timeout=timeout)
 
-    def get_command_receive_object(self, timeout=0.5):
+    def get_command_receive_object(self, timeout: float = 0.5):
         return self._cro_queue.get(timeout=timeout)
