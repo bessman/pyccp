@@ -34,6 +34,7 @@ class Master:
     def __init__(self, transport: can.Bus, cro_id: int, dto_id: int):
         self.slaveConnections = {}
         self.cro_id = cro_id
+        self.dto_id = dto_id
         self._transport = transport
         self._transport.set_filters(
             [{"can_id": dto_id, "can_mask": 0x1FFFFFFF, "extended": True}]
@@ -258,7 +259,7 @@ class Master:
         data = self._receive()
         return data[:size]
 
-    def getDaqSize(self, daqListNumber: int, dto_id: int) -> tuple:
+    def getDaqSize(self, daqListNumber: int, dto_id: int = None) -> tuple:
         """
         Returns the size of the specified DAQ list as the number of available
         Object DescriptorTables (ODTs) and clears the current list. If the
@@ -285,6 +286,8 @@ class Master:
              pid0: First PID of DAQ list)
 
         """
+
+        dto_id = self.dto_id if dto_id is None else dto_id
 
         cro = ccp.CommandReceiveObject(
             self.cro_id,
