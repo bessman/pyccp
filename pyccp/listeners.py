@@ -145,7 +145,7 @@ class DAQParser(can.Listener):
         # Flatten DAQ lists to dict of ODTs
         # self.odt_dict is used for decoding incoming data
         self.odt_dict = {}
-        # self.values_dict is used for holding decoded data
+        # self.values_dict is a dictionary of queues for holding decoded data
         self.values_dict = {}
 
         for dl in daq_lists:
@@ -153,7 +153,7 @@ class DAQParser(can.Listener):
                 self.odt_dict[odt.number] = odt
 
                 for e in odt.elements:
-                    self.values_dict[e.name] = None
+                    self.values_dict[e.name] = queue.Queue()
 
         if self.logging:
             columns = list(self.values_dict.keys())
@@ -164,7 +164,7 @@ class DAQParser(can.Listener):
             self.odt_dict[odt.number]: odt
 
             for e in odt.elements:
-                self.values_dict[e.name] = None
+                self.values_dict[e.name] = queue.Queue()
 
                 if self.logging:
                     self.log.loc[:, e.name] = [NaN] * len(self.log.index)
@@ -181,7 +181,7 @@ class DAQParser(can.Listener):
                 element_values = self.odt_dict[odt_number].decode(msg.data[1:])
 
                 for k, v in element_values.items():
-                    self.values_dict[k] = v
+                    self.values_dict[k].put(v)
 
                     if self._verbose:
                         print(k + ": " + str(v))
@@ -192,8 +192,7 @@ class DAQParser(can.Listener):
                         self.log.loc[pd.to_datetime(msg.timestamp, unit="s")][k] = v
 
     def get(self, element_name: str):
-        self._queue.get(timeout=0.5)
-        return self.values_dict[element_name]
+        return self.values_dict[element_name].get(timeout=0.5)
 
     def get_log(self):
         if self.logging:
