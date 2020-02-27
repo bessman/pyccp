@@ -509,7 +509,7 @@ class Element(cantools.database.Signal):
         size,
         address,
         extension=0,
-        byte_order="little_endian",
+        byte_order="big_endian",
         is_signed=False,
         initial=None,
         scale=1,
