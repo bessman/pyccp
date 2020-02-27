@@ -25,10 +25,9 @@ __copyright__ = """
 
 import can
 import cantools
-from collections import namedtuple
 import enum
-from pprint import pprint
-import struct
+import decimal
+from typing import List, Union
 
 
 MAX_CTO = 0x0008
@@ -114,19 +113,41 @@ class State(enum.IntEnum):
 
 
 class CommandReceiveObject(can.Message):
-    """Command Receive Object.
+    """
+    Command Receive Objects (CRO) are sent from the master to the slave and
+    contain commands and associated data which the slave must handle.
     """
 
     def __init__(
         self,
-        arbitration_id,
-        command_code,
-        ctr,
-        cro_data,
-        timestamp=0,
-        channel=None,
-        is_extended_id=True,
+        arbitration_id: int,
+        command_code: CommandCodes,
+        ctr: int,
+        cro_data: Union[List[int], bytearray],
+        timestamp: float = 0,
+        channel: can.typechecking.Channel = None,
+        is_extended_id: bool = True,
     ):
+        """
+        Parameters
+        ----------
+        command_code : ccp.CommandCodes
+            The command to send to the slave.
+        ctr : int
+            Command counter, 0-0xFF. Used to associate CROs with CRMs.
+        cro_data : list of int or bytearray
+            Command data.
+
+        Raises
+        ------
+        ValueError
+            If cro_data is longer than six bytes.
+
+        Returns
+        -------
+        None.
+
+        """
         self.command_code = command_code
         self.ctr = ctr
         self.cro_data = cro_data
@@ -144,54 +165,83 @@ class CommandReceiveObject(can.Message):
             is_extended_id=is_extended_id,
         )
 
-    def __get_bytes(self, start, length, byteorder="big"):
+    def _from_bytes(self, start: int, length: int, byteorder: str = "big") -> int:
+        """
+        Convert the CRO's command data, or part of the command data, to an
+        integer value.
+
+        Parameters
+        ----------
+        start : int
+            Start byte.
+        length : int
+            Number of bytes to convert.
+        byteorder : str, optional
+            Endianess. The default is "big".
+
+        Returns
+        -------
+        int
+            Converted bytes.
+
+        """
         return hex(
             int.from_bytes(self.cro_data[start : start + length], byteorder=byteorder)
         )
 
-    def parse(self):
+    def parse(self) -> str:
+        """
+        Show the CRO's command code and data in a easily readable format.
+
+        Returns
+        -------
+        str
+            The command code's name followed by its associated data as
+            integers.
+
+        """
         field_strings = [CommandCodes(self.command_code).name]
 
         if self.command_code == CommandCodes.ACTION_SERVICE:
-            action_service_number = self.__get_bytes(0, 2)
+            action_service_number = self._from_bytes(0, 2)
             field_strings.append(action_service_number)
-            parameters = self.__get_bytes(2, 4)
+            parameters = self._from_bytes(2, 4)
 
             if parameters != "0x0":
                 field_strings.append(parameters)
 
         elif self.command_code == CommandCodes.BUILD_CHKSUM:
-            block_size = self.__get_bytes(0, 4)
+            block_size = self._from_bytes(0, 4)
             field_strings.append(block_size)
         elif self.command_code == CommandCodes.CLEAR_MEMORY:
-            memory_size = self.__get_bytes(0, 4)
+            memory_size = self._from_bytes(0, 4)
             field_strings.append(memory_size)
         elif self.command_code == CommandCodes.CONNECT:
-            station_address = self.__get_bytes(0, 2, "little")
+            station_address = self._from_bytes(0, 2, "little")
             field_strings.append(station_address)
         elif self.command_code == CommandCodes.DIAG_SERVICE:
-            diagnostic_service_number = self.__get_bytes(0, 2)
+            diagnostic_service_number = self._from_bytes(0, 2)
             field_strings.append(diagnostic_service_number)
-            parameters = self.__get_bytes(2, 4)
+            parameters = self._from_bytes(2, 4)
 
             if parameters != "0x0":
                 field_strings.append(parameters)
 
         elif self.command_code == CommandCodes.DISCONNECT:
-            permanence = self.__get_bytes(0, 1)
+            permanence = self._from_bytes(0, 1)
             field_strings.append(permanence)
-            station_address = self.__get_bytes(2, 2, "little")
+            station_address = self._from_bytes(2, 2, "little")
             field_strings.append(station_address)
         elif self.command_code == CommandCodes.DNLOAD:
-            data_size = self.__get_bytes(0, 1)
+            data_size = self._from_bytes(0, 1)
             field_strings.append(data_size)
-            data = self.__get_bytes(1, 5)
+            data = self._from_bytes(1, 5)
             field_strings.append(data)
         elif self.command_code == CommandCodes.DNLOAD_6:
-            data = self.__get_bytes(0, 6)
+            data = self._from_bytes(0, 6)
             field_strings.append(data)
         elif self.command_code == CommandCodes.EXCHANGE_ID:
-            device_info = self.__get_bytes(0, 6)
+            device_info = self._from_bytes(0, 6)
 
             if device_info != "0x0":
                 field_strings.append(device_info)
@@ -199,86 +249,86 @@ class CommandReceiveObject(can.Message):
         elif self.command_code == CommandCodes.GET_ACTIVE_CAL_PAGE:
             pass
         elif self.command_code == CommandCodes.GET_CCP_VERSION:
-            main = self.__get_bytes(0, 1)
+            main = self._from_bytes(0, 1)
             field_strings.append(main)
-            release = self.__get_bytes(1, 1)
+            release = self._from_bytes(1, 1)
             field_strings.append(release)
         elif self.command_code == CommandCodes.GET_DAQ_SIZE:
-            daq_no = self.__get_bytes(0, 1)
+            daq_no = self._from_bytes(0, 1)
             field_strings.append(daq_no)
-            dto_id = self.__get_bytes(2, 4)
+            dto_id = self._from_bytes(2, 4)
             field_strings.append(dto_id)
         elif self.command_code == CommandCodes.GET_SEED:
-            resource_mask = self.__get_bytes(0, 1)
+            resource_mask = self._from_bytes(0, 1)
             field_strings.append(resource_mask)
         elif self.command_code == CommandCodes.GET_S_STATUS:
             pass
         elif self.command_code == CommandCodes.MOVE:
-            data_size = self.__get_bytes(0, 4)
+            data_size = self._from_bytes(0, 4)
             field_strings.append(data_size)
         elif self.command_code == CommandCodes.PROGRAM:
-            data_size = self.__get_bytes(0, 1)
+            data_size = self._from_bytes(0, 1)
             field_strings.append(data_size)
-            data = self.__get_bytes(1, 5)
+            data = self._from_bytes(1, 5)
             field_strings.append(data)
         elif self.command_code == CommandCodes.PROGRAM_6:
-            data = self.__get_bytes(0, 6)
+            data = self._from_bytes(0, 6)
             field_strings.append(data)
         elif self.command_code == CommandCodes.SELECT_CAL_PAGE:
             pass
         elif self.command_code == CommandCodes.SET_DAQ_PTR:
-            daq_list_no = self.__get_bytes(0, 1)
+            daq_list_no = self._from_bytes(0, 1)
             field_strings.append(daq_list_no)
-            odt_no = self.__get_bytes(1, 1)
+            odt_no = self._from_bytes(1, 1)
             field_strings.append(odt_no)
-            element_no = self.__get_bytes(2, 1)
+            element_no = self._from_bytes(2, 1)
             field_strings.append(element_no)
         elif self.command_code == CommandCodes.SET_MTA:
-            mta_number = self.__get_bytes(0, 1)
+            mta_number = self._from_bytes(0, 1)
             field_strings.append(mta_number)
-            address_extension = self.__get_bytes(1, 1)
+            address_extension = self._from_bytes(1, 1)
             field_strings.append(address_extension)
-            address = self.__get_bytes(2, 4)
+            address = self._from_bytes(2, 4)
             field_strings.append(address)
         elif self.command_code == CommandCodes.SET_S_STATUS:
-            status_bits = self.__get_bytes(0, 1)
+            status_bits = self._from_bytes(0, 1)
             field_strings.append(status_bits)
         elif self.command_code == CommandCodes.SHORT_UP:
-            data_size = self.__get_bytes(0, 1)
+            data_size = self._from_bytes(0, 1)
             field_strings.append(data_size)
-            address_extension = self.__get_bytes(1, 1)
+            address_extension = self._from_bytes(1, 1)
             field_strings.append(address_extension)
-            address = self.__get_bytes(2, 4)
+            address = self._from_bytes(2, 4)
             field_strings.append(address)
         elif self.command_code == CommandCodes.START_STOP:
-            mode = self.__get_bytes(0, 1)
+            mode = self._from_bytes(0, 1)
             field_strings.append(mode)
-            daq_list_number = self.__get_bytes(1, 1)
+            daq_list_number = self._from_bytes(1, 1)
             field_strings.append(daq_list_number)
-            last_odt_number = self.__get_bytes(2, 1)
+            last_odt_number = self._from_bytes(2, 1)
             field_strings.append(last_odt_number)
-            event_channel_number = self.__get_bytes(3, 1)
+            event_channel_number = self._from_bytes(3, 1)
             field_strings.append(event_channel_number)
-            transmission_rate_prescaler = self.__get_bytes(4, 2)
+            transmission_rate_prescaler = self._from_bytes(4, 2)
             field_strings.append(transmission_rate_prescaler)
         elif self.command_code == CommandCodes.START_STOP_ALL:
-            mode = self.__get_bytes(0, 1)
+            mode = self._from_bytes(0, 1)
             field_strings.append(mode)
         elif self.command_code == CommandCodes.TEST:
-            station_address = self.__get_bytes(0, 2, "little")
+            station_address = self._from_bytes(0, 2, "little")
             field_strings.append(station_address)
         elif self.command_code == CommandCodes.UNLOCK:
-            key = self.__get_bytes(0, 6)
+            key = self._from_bytes(0, 6)
             field_strings.append(key)
         elif self.command_code == CommandCodes.UPLOAD:
-            data_size = self.__get_bytes(0, 1)
+            data_size = self._from_bytes(0, 1)
             field_strings.append(data_size)
         elif self.command_code == CommandCodes.WRITE_DAQ:
-            daq_element_size = self.__get_bytes(0, 1)
+            daq_element_size = self._from_bytes(0, 1)
             field_strings.append(daq_element_size)
-            address_extension = self.__get_bytes(1, 1)
+            address_extension = self._from_bytes(1, 1)
             field_strings.append(address_extension)
-            address = self.__get_bytes(2, 4)
+            address = self._from_bytes(2, 4)
             field_strings.append(address)
         else:
             pass
@@ -307,18 +357,41 @@ class CommandReceiveObject(can.Message):
 
 
 class DataTransmissionObject(can.Message):
-    """Data Transmission Object.
+    """
+    Data Transmission Objects (DTO) are sent from the slave to the master, and
+    are one of three types:
+        Command Return Messages (CRM) are sent in response to CROs.
+        Event Messages (EVM) are sent in response to slave internal events.
+        Data Acquisition Messages (DAQ) are sent periodically during DAQ
+        sessions.
+    This class should not be used directly; it is just a superclass for
+    CRM, EVM, and DAQ classes.
     """
 
     def __init__(
         self,
-        arbitration_id,
-        pid,
-        dto_data=[],
-        timestamp=0,
-        channel=None,
-        is_extended_id=True,
+        arbitration_id: int,
+        pid: Union[DTOType, int],
+        dto_data: Union[List[int], bytearray] = [],
+        timestamp: float = 0,
+        channel: can.typechecking.Channel = None,
+        is_extended_id: bool = True,
     ):
+        """
+        Parameters
+        ----------
+        pid : DTOType or int
+            0xFF for CRM,
+            0xFE for EVM,
+            0-0xFD for DAQ.
+        dto_data : list of int or bytearray, optional
+            Transmitted data. The default is [].
+
+        Returns
+        -------
+        None.
+
+        """
         self.pid = pid
         data = [pid] + dto_data
         super().__init__(
@@ -331,19 +404,36 @@ class DataTransmissionObject(can.Message):
 
 
 class CommandReturnMessage(DataTransmissionObject):
-    """Command Return Message.
+    """
+    Command Return Messages (CRM) are a type of Data Transmission Object which
+    is sent from a slave to the master in response to a Command Receive Object.
     """
 
     def __init__(
         self,
-        arbitration_id,
-        return_code,
-        ctr,
-        crm_data,
-        timestamp=0,
-        channel=None,
-        is_extended_id=True,
+        arbitration_id: int,
+        return_code: ReturnCodes,
+        ctr: int,
+        crm_data: Union[List[int], bytearray],
+        timestamp: float = 0,
+        channel: can.typechecking.Channel = None,
+        is_extended_id: bool = True,
     ):
+        """
+        Parameters
+        ----------
+        return_code : ccp.ReturnCodes
+            The command to send to the slave.
+        ctr : int
+            Command counter, 0-255. Used to associate CROs with CRMs.
+        crm_data : list of int or bytearray
+            Command data.
+
+        Returns
+        -------
+        None.
+
+        """
         self.return_code = return_code
         self.ctr = ctr
         self.crm_data = crm_data
@@ -379,17 +469,30 @@ class CommandReturnMessage(DataTransmissionObject):
 
 
 class EventMessage(DataTransmissionObject):
-    """Event Message.
+    """
+    Event Messages (EVM) are a type of Data Transmission Object which is sent
+    from a slave to the master in response to an internal event in the slave.
     """
 
     def __init__(
         self,
-        arbitration_id,
-        return_code,
-        timestamp=0,
-        channel=None,
-        is_extended_id=True,
+        arbitration_id: int,
+        return_code: ReturnCodes,
+        timestamp: float = 0,
+        channel: can.typechecking.Channel = None,
+        is_extended_id: bool = True,
     ):
+        """
+        Parameters
+        ----------
+        return_code : ccp.ReturnCodes
+            The command to send to the slave.
+
+        Returns
+        -------
+        None.
+
+        """
         self.return_code = return_code
         super().__init__(
             arbitration_id=arbitration_id,
@@ -417,18 +520,36 @@ class EventMessage(DataTransmissionObject):
 
 
 class DataAcquisitionMessage(DataTransmissionObject):
-    """Data Acquisition Message.
+    """
+    Data Acquisition Messages (DAQ) are a type of Data Transmission Object
+    which is sent periodically from a slave to the master during DAQ sessions.
+    They contain data specified by Object Descriptor Tables.
     """
 
     def __init__(
         self,
-        arbitration_id,
-        odt_number,
-        daq_data,
-        timestamp=0,
-        channel=None,
-        is_extended_id=True,
+        arbitration_id: int,
+        odt_number: int,
+        daq_data: Union[List[int], bytearray],
+        timestamp: float = 0,
+        channel: can.typechecking.Channel = None,
+        is_extended_id: bool = True,
     ):
+        """
+        Parameters
+        ----------
+        odt_number : int
+            The number of the Object Descriptor Table which describes the data
+            in this DAQ message.
+        daq_data : list of int or bytearray
+            Data, the meaning of which is described in the Object Descriptor
+            Table specified by odt_number.
+
+        Returns
+        -------
+        None.
+
+        """
         self.odt_number = odt_number
         self.daq_data = daq_data
         super().__init__(
@@ -460,68 +581,52 @@ class DataAcquisitionMessage(DataTransmissionObject):
         return "  ".join(field_strings).strip()
 
 
-class ObjectDescriptorTable(cantools.database.Message):
-    def __init__(
-        self,
-        frame_id,
-        length,
-        elements,
-        number,
-        name=None,
-        comment=None,
-        is_extended_frame=True,
-    ):
-        self._number = number
-
-        if name is None:
-            name = str(number)
-
-        super().__init__(
-            frame_id=frame_id,
-            name=name,
-            length=length,
-            signals=elements,
-            comment=comment,
-            is_extended_frame=is_extended_frame,
-        )
-        self._elements = self._signals
-
-    @property
-    def number(self):
-        """ODT number.
-        """
-
-        return self._number
-
-    @property
-    def elements(self):
-        """Elements of the ODT.
-        """
-
-        return self._elements
-
-
 class Element(cantools.database.Signal):
+    """
+    Elements are the contents of Object Descriptor Tables. They are pointers
+    to variables inside a slave.
+    """
+
     def __init__(
         self,
-        name,
-        start,
-        size,
-        address,
-        extension=0,
-        byte_order="big_endian",
-        is_signed=False,
-        initial=None,
-        scale=1,
-        offset=0,
-        minimum=None,
-        maximum=None,
-        unit=None,
-        choices=None,
-        comment=None,
-        is_float=False,
-        decimal=None,
+        name: str,
+        start: int,
+        size: int,
+        address: int,
+        extension: int = 0,
+        byte_order: str = "big_endian",
+        is_signed: bool = False,
+        initial: Union[int, float] = None,
+        scale: int = 1,
+        offset: Union[int, float] = 0,
+        minimum: Union[int, float] = None,
+        maximum: Union[int, float] = None,
+        unit: str = None,
+        choices: enum.IntEnum = None,
+        comment: str = None,
+        is_float: bool = False,
+        decimal: decimal.Decimal = None,
     ):
+        """
+        Parameters
+        ----------
+        name : str
+            Name of the slave internal variable.
+        start : int
+            Starting bit of the variable in the ODT. Little endian, i.e. if the
+            first byte of the ODT is big endian its starting bit is 7.
+        size : int
+            Size of the variable in bytes.
+        address : int
+            Memory address of the variable in the slave.
+        extension : int, optional
+            Address extension in slave. The default is 0.
+
+        Returns
+        -------
+        None.
+
+        """
         self._address = address
         self._extension = extension
         super().__init__(
@@ -574,6 +679,71 @@ class Element(cantools.database.Signal):
     @size.setter
     def size(self, value):
         self._length = value * 8
+
+
+class ObjectDescriptorTable(cantools.database.Message):
+    """
+    Object Descriptor Tables (ODT) describe the layout of DAQ messages. ODTs
+    contain Elements which refer to memory addresses in a slave. ODTs are
+    sent from the master to a slave during session configuration with the
+    SET_DAQ_PTR and WRITE_DAQ commands, and then used by the master to parse
+    data received from a slave during a DAQ session.
+    """
+
+    def __init__(
+        self,
+        frame_id: int,
+        length: int,
+        elements: List[Element],
+        number: int,
+        name: str = None,
+        comment: str = None,
+        is_extended_frame: bool = True,
+    ):
+        """
+        Parameters
+        ----------
+        elements : list of Element
+            List of Element objects which point to slave internal data.
+        number : int
+            ODT number.
+        name : str, optional
+            Name of the ODT. If none is provided it will default to the ODT
+            number as a string.
+
+        Returns
+        -------
+        None.
+
+        """
+        self._number = number
+
+        if name is None:
+            name = str(number)
+
+        super().__init__(
+            frame_id=frame_id,
+            name=name,
+            length=length,
+            signals=elements,
+            comment=comment,
+            is_extended_frame=is_extended_frame,
+        )
+        self._elements = self._signals
+
+    @property
+    def number(self):
+        """ODT number.
+        """
+
+        return self._number
+
+    @property
+    def elements(self):
+        """Elements of the ODT.
+        """
+
+        return self._elements
 
 
 class Memory(object):
