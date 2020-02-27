@@ -506,7 +506,7 @@ class Element(cantools.database.Signal):
         self,
         name,
         start,
-        length,
+        size,
         address,
         extension=0,
         byte_order="little_endian",
@@ -527,7 +527,7 @@ class Element(cantools.database.Signal):
         super().__init__(
             name=name,
             start=start,
-            length=length,
+            length=size * 8,  # Bytes -> bits
             byte_order=byte_order,
             is_signed=is_signed,
             initial=initial,
@@ -563,6 +563,17 @@ class Element(cantools.database.Signal):
     @extension.setter
     def extension(self, value):
         self._extension = value
+
+    @property
+    def size(self):
+        """The element's length in bytes.
+        """
+        # cantool.database.Signal.length is in bits
+        return self._length // 8
+
+    @size.setter
+    def size(self, value):
+        self._length = value * 8
 
 
 class Memory(object):
