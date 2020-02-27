@@ -104,9 +104,12 @@ class CCPMessageSorter(can.Listener):
 
 
 class DAQParser(can.Listener):
-    def __init__(self, dto_id: int,
-                 daq_lists: List[List[ccp.ObjectDescriptorTable]] = [],
-                 enable_logging: bool = False):
+    def __init__(
+        self,
+        dto_id: int,
+        daq_lists: List[List[ccp.ObjectDescriptorTable]] = [],
+        enable_logging: bool = False,
+    ):
         self.dto_id = dto_id
         self._queue = queue.Queue()
         self.logging = enable_logging

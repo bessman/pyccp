@@ -461,26 +461,29 @@ class DataAcquisitionMessage(DataTransmissionObject):
 
 
 class ObjectDescriptorTable(cantools.database.Message):
-
-    def __init__(self,
-                 frame_id,
-                 length,
-                 elements,
-                 number,
-                 name=None,
-                 comment=None,
-                 is_extended_frame=True,):
+    def __init__(
+        self,
+        frame_id,
+        length,
+        elements,
+        number,
+        name=None,
+        comment=None,
+        is_extended_frame=True,
+    ):
         self._number = number
 
         if name is None:
             name = str(number)
 
-        super().__init__(frame_id=frame_id,
-                         name=name,
-                         length=length,
-                         signals=elements,
-                         comment=comment,
-                         is_extended_frame=is_extended_frame,)
+        super().__init__(
+            frame_id=frame_id,
+            name=name,
+            length=length,
+            signals=elements,
+            comment=comment,
+            is_extended_frame=is_extended_frame,
+        )
         self._elements = self._signals
 
     @property
@@ -499,41 +502,45 @@ class ObjectDescriptorTable(cantools.database.Message):
 
 
 class Element(cantools.database.Signal):
-    def __init__(self,
-                 name,
-                 start,
-                 length,
-                 address,
-                 extension=0,
-                 byte_order='little_endian',
-                 is_signed=False,
-                 initial=None,
-                 scale=1,
-                 offset=0,
-                 minimum=None,
-                 maximum=None,
-                 unit=None,
-                 choices=None,
-                 comment=None,
-                 is_float=False,
-                 decimal=None,):
+    def __init__(
+        self,
+        name,
+        start,
+        length,
+        address,
+        extension=0,
+        byte_order="little_endian",
+        is_signed=False,
+        initial=None,
+        scale=1,
+        offset=0,
+        minimum=None,
+        maximum=None,
+        unit=None,
+        choices=None,
+        comment=None,
+        is_float=False,
+        decimal=None,
+    ):
         self._address = address
         self._extension = extension
-        super().__init__(name=name,
-                         start=start,
-                         length=length,
-                         byte_order=byte_order,
-                         is_signed=is_signed,
-                         initial=initial,
-                         scale=scale,
-                         offset=offset,
-                         minimum=minimum,
-                         maximum=maximum,
-                         unit=unit,
-                         choices=choices,
-                         comment=comment,
-                         is_float=is_float,
-                         decimal=decimal,)
+        super().__init__(
+            name=name,
+            start=start,
+            length=length,
+            byte_order=byte_order,
+            is_signed=is_signed,
+            initial=initial,
+            scale=scale,
+            offset=offset,
+            minimum=minimum,
+            maximum=maximum,
+            unit=unit,
+            choices=choices,
+            comment=comment,
+            is_float=is_float,
+            decimal=decimal,
+        )
 
     @property
     def address(self):
