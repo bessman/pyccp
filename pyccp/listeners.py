@@ -27,15 +27,27 @@ import can
 import queue
 import pandas as pd
 from numpy import NaN
-from typing import List
+from typing import List, Union
 
 from pyccp import ccp
 
 
 class CCPMessageSorter(can.Listener):
-    def __init__(self, dto_id: int, cro_id: int):
+    def __init__(
+        self, dto_id: int, cro_id: int, verbose: Union[bool, List[str]] = False
+    ):
         self.dto_id = dto_id
         self.cro_id = cro_id
+
+        if verbose is True:
+            self._verbose = ["CRM", "EVM", "DAQ", "CRO"]
+        elif verbose is False:
+            self._verbose = []
+        elif isinstance(verbose, list):
+            self._verbose = verbose
+        else:
+            raise TypeError("Argument 'verbose' must be bool or list")
+
         self._crm_queue = queue.Queue()
         self._evm_queue = queue.Queue()
         self._daq_queue = queue.Queue()
@@ -56,6 +68,10 @@ class CCPMessageSorter(can.Listener):
                     is_extended_id=msg.is_extended_id,
                 )
                 self._crm_queue.put(msg)
+
+                if "CRM" in self._verbose:
+                    print(msg)
+
             elif pid == ccp.DTOType.EVENT_MESSAGE:
                 msg = ccp.EVM(
                     arbitration_id=msg.arbitration_id,
@@ -65,6 +81,10 @@ class CCPMessageSorter(can.Listener):
                     is_extended_id=msg.is_extended_id,
                 )
                 self._evm_queue.put(msg)
+
+                if "EVM" in self._verbose:
+                    print(msg)
+
             else:
                 # DTO contains a Data Acquisiton Message
                 msg = ccp.DataAcquisitionMessage(
@@ -75,7 +95,11 @@ class CCPMessageSorter(can.Listener):
                     channel=msg.channel,
                     is_extended_id=msg.is_extended_id,
                 )
-            self._daq_queue.put(msg)
+                self._daq_queue.put(msg)
+
+                if "DAQ" in self._verbose:
+                    print(msg)
+
         elif msg.arbitration_id == self.cro_id:
             msg = ccp.CommandReceiveObject(
                 arbitration_id=msg.arbitration_id,
@@ -87,6 +111,9 @@ class CCPMessageSorter(can.Listener):
                 is_extended_id=msg.is_extended_id,
             )
             self._cro_queue.put(msg)
+
+            if "CRO" in self._verbose:
+                print(msg)
         else:
             pass
 
@@ -109,10 +136,12 @@ class DAQParser(can.Listener):
         dto_id: int,
         daq_lists: List[List[ccp.ObjectDescriptorTable]] = [],
         enable_logging: bool = False,
+        verbose: bool = False,
     ):
         self.dto_id = dto_id
         self._queue = queue.Queue()
         self.logging = enable_logging
+        self._verbose = verbose
         # Flatten DAQ lists to dict of ODTs
         # self.odt_dict is used for decoding incoming data
         self.odt_dict = {}
@@ -153,6 +182,9 @@ class DAQParser(can.Listener):
 
                 for k, v in element_values.items():
                     self.values_dict[k] = v
+
+                    if self._verbose:
+                        print(k + ": " + str(v))
 
                     if self.logging:
                         fill = [NaN] * len(self.log.columns)

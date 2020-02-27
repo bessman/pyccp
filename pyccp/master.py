@@ -31,15 +31,21 @@ from pyccp.logger import Logger
 
 
 class Master:
-    def __init__(self, transport: can.Bus, cro_id: int, dto_id: int):
+    def __init__(
+        self, transport: can.Bus, cro_id: int, dto_id: int, verbose: bool = False
+    ):
         self.slaveConnections = {}
         self.cro_id = cro_id
         self.dto_id = dto_id
         self._transport = transport
+        # Receive both DTOs and CROs, the latter in case local echo is enabled.
         self._transport.set_filters(
-            [{"can_id": dto_id, "can_mask": 0x1FFFFFFF, "extended": True}]
+            [
+                {"can_id": dto_id, "can_mask": 0x1FFFFFFF, "extended": True},
+                {"can_id": cro_id, "can_mask": 0x1FFFFFFF, "extended": True},
+            ]
         )
-        self._queue = CCPMessageSorter(dto_id, cro_id)
+        self._queue = CCPMessageSorter(dto_id, cro_id, verbose=verbose)
         self._notifier = can.Notifier(self._transport, [self._queue])
         self.ctr = 0x00
         self.mta0_extension = 0
