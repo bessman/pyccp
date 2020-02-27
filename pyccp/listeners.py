@@ -188,8 +188,8 @@ class DAQParser(can.Listener):
 
                     if self.logging:
                         fill = [NaN] * len(self.log.columns)
-                        self.log.loc[pd.to_datime(msg.timestamp, unit="s")] = fill
-                        self.log.loc[pd.to_datime(msg.timestamp, unit="s")][k] = v
+                        self.log.loc[pd.to_datetime(msg.timestamp, unit="s")] = fill
+                        self.log.loc[pd.to_datetime(msg.timestamp, unit="s")][k] = v
 
     def get(self, element_name: str):
         self._queue.get(timeout=0.5)
