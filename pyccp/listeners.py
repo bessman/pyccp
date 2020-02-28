@@ -25,8 +25,6 @@ __copyright__ = """
 
 import can
 import queue
-import pandas as pd
-from numpy import NaN
 from typing import List, Union
 
 from pyccp import ccp
@@ -135,12 +133,9 @@ class DAQParser(can.Listener):
         self,
         dto_id: int,
         daq_lists: List[List[ccp.ObjectDescriptorTable]] = [],
-        enable_logging: bool = False,
         verbose: bool = False,
     ):
         self.dto_id = dto_id
-        self._queue = queue.Queue()
-        self.logging = enable_logging
         self._verbose = verbose
         # Flatten DAQ lists to dict of ODTs
         # self.odt_dict is used for decoding incoming data
@@ -155,19 +150,12 @@ class DAQParser(can.Listener):
                 for e in odt.elements:
                     self.values_dict[e.name] = queue.Queue()
 
-        if self.logging:
-            columns = list(self.values_dict.keys())
-            self.log = pd.DataFrame(columns=columns)
-
     def add_daq_list(self, daq_list: List[ccp.ObjectDescriptorTable]):
         for odt in daq_list:
             self.odt_dict[odt.number]: odt
 
             for e in odt.elements:
                 self.values_dict[e.name] = queue.Queue()
-
-                if self.logging:
-                    self.log.loc[:, e.name] = [NaN] * len(self.log.index)
 
     def on_message_received(self, msg: can.Message):
         if msg.arbitration_id == self.dto_id:
@@ -176,26 +164,14 @@ class DAQParser(can.Listener):
 
             if pid < 0xFE:
                 # The DTO is a Data Acquisition Message
-                self._queue.put(msg)
                 odt_number = pid
                 element_values = self.odt_dict[odt_number].decode(msg.data[1:])
 
                 for k, v in element_values.items():
-                    self.values_dict[k].put(v)
+                    self.values_dict[k].put((msg.timestamp, v))
 
                     if self._verbose:
                         print(k + ": " + str(v))
 
-                    if self.logging:
-                        fill = [NaN] * len(self.log.columns)
-                        self.log.loc[pd.to_datetime(msg.timestamp, unit="s")] = fill
-                        self.log.loc[pd.to_datetime(msg.timestamp, unit="s")][k] = v
-
     def get(self, element_name: str):
         return self.values_dict[element_name].get(timeout=0.5)
-
-    def get_log(self):
-        if self.logging:
-            return self.log
-        else:
-            return None
