@@ -125,7 +125,7 @@ class CommandReceiveObject(can.Message):
         ctr: int,
         cro_data: Union[List[int], bytearray],
         timestamp: float = 0,
-        channel: can.typechecking.Channel = None,
+        channel: Union[int, str] = None,
         is_extended_id: bool = True,
     ):
         """
@@ -374,7 +374,7 @@ class DataTransmissionObject(can.Message):
         pid: Union[DTOType, int],
         dto_data: Union[List[int], bytearray] = [],
         timestamp: float = 0,
-        channel: can.typechecking.Channel = None,
+        channel: Union[int, str] = None,
         is_extended_id: bool = True,
     ):
         """
@@ -416,7 +416,7 @@ class CommandReturnMessage(DataTransmissionObject):
         ctr: int,
         crm_data: Union[List[int], bytearray],
         timestamp: float = 0,
-        channel: can.typechecking.Channel = None,
+        channel: Union[int, str] = None,
         is_extended_id: bool = True,
     ):
         """
@@ -479,7 +479,7 @@ class EventMessage(DataTransmissionObject):
         arbitration_id: int,
         return_code: ReturnCodes,
         timestamp: float = 0,
-        channel: can.typechecking.Channel = None,
+        channel: Union[int, str] = None,
         is_extended_id: bool = True,
     ):
         """
@@ -532,7 +532,7 @@ class DataAcquisitionMessage(DataTransmissionObject):
         odt_number: int,
         daq_data: Union[List[int], bytearray],
         timestamp: float = 0,
-        channel: can.typechecking.Channel = None,
+        channel: Union[int, str] = None,
         is_extended_id: bool = True,
     ):
         """
