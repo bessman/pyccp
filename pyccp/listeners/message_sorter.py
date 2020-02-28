@@ -39,9 +39,10 @@ class MessageSorter(can.Listener):
     ):
         self.dto_id = dto_id
         self.cro_id = cro_id
+        self.types = ["CRM", "EVM", "DAQ", "CRO"]
 
         if verbose is True:
-            self._verbose = ["CRM", "EVM", "DAQ", "CRO"]
+            self._verbose = self.types
         elif verbose is False:
             self._verbose = []
         elif isinstance(verbose, list):
@@ -54,54 +55,72 @@ class MessageSorter(can.Listener):
         self._daq_queue = queue.Queue()
         self._cro_queue = queue.Queue()
 
+    def is_cro(self, msg: can.Message) -> bool:
+        return msg.arbitration_id == self.cro_id
+
+    def is_dto(self, msg: can.Message) -> bool:
+        return msg.arbitration_id == self.dto_id
+
+    def is_crm(self, msg: can.Message) -> bool:
+        pid = msg.data[0]
+
+        return self.is_dto(msg) and (pid == ccp.DTOType.COMMAND_RETURN_MESSAGE)
+
+    def is_evm(self, msg: can.Message) -> bool:
+        pid = msg.data[0]
+
+        return self.is_dto(msg) and (pid == ccp.DTOType.EVENT_MESSAGE)
+
+    def is_daq(self, msg: can.Message) -> bool:
+        pid = msg.data[0]
+
+        return self.is_dto(msg) and (pid < ccp.DTOType.EVENT_MESSAGE)
+
     def on_message_received(self, msg: can.Message):
-        if msg.arbitration_id == self.dto_id:
-            pid = msg.data[0]
+        if self.is_crm(msg):
+            msg = CommandReturnMessage(
+                arbitration_id=msg.arbitration_id,
+                return_code=msg.data[1],
+                ctr=msg.data[2],
+                crm_data=msg.data[3:],
+                timestamp=msg.timestamp,
+                channel=msg.channel,
+                is_extended_id=msg.is_extended_id,
+            )
+            self._crm_queue.put(msg)
 
-            if pid == ccp.DTOType.COMMAND_RETURN_MESSAGE:
-                msg = CommandReturnMessage(
-                    arbitration_id=msg.arbitration_id,
-                    return_code=msg.data[1],
-                    ctr=msg.data[2],
-                    crm_data=msg.data[3:],
-                    timestamp=msg.timestamp,
-                    channel=msg.channel,
-                    is_extended_id=msg.is_extended_id,
-                )
-                self._crm_queue.put(msg)
+            if "CRM" in self._verbose:
+                print(msg)
 
-                if "CRM" in self._verbose:
-                    print(msg)
+        elif self.is_evm(msg):
+            msg = ccp.EVM(
+                arbitration_id=msg.arbitration_id,
+                return_code=msg.data[1],
+                timestamp=msg.timestamp,
+                channel=msg.channel,
+                is_extended_id=msg.is_extended_id,
+            )
+            self._evm_queue.put(msg)
 
-            elif pid == ccp.DTOType.EVENT_MESSAGE:
-                msg = ccp.EVM(
-                    arbitration_id=msg.arbitration_id,
-                    return_code=msg.data[1],
-                    timestamp=msg.timestamp,
-                    channel=msg.channel,
-                    is_extended_id=msg.is_extended_id,
-                )
-                self._evm_queue.put(msg)
+            if "EVM" in self._verbose:
+                print(msg)
 
-                if "EVM" in self._verbose:
-                    print(msg)
+        elif self.is_daq(msg):
+            # DTO contains a Data Acquisiton Message
+            msg = DataAcquisitionMessage(
+                arbitration_id=msg.arbitration_id,
+                odt_number=msg.data[0],
+                daq_data=msg.data[1:],
+                timestamp=msg.timestamp,
+                channel=msg.channel,
+                is_extended_id=msg.is_extended_id,
+            )
+            self._daq_queue.put(msg)
 
-            else:
-                # DTO contains a Data Acquisiton Message
-                msg = DataAcquisitionMessage(
-                    arbitration_id=msg.arbitration_id,
-                    odt_number=msg.data[0],
-                    daq_data=msg.data[1:],
-                    timestamp=msg.timestamp,
-                    channel=msg.channel,
-                    is_extended_id=msg.is_extended_id,
-                )
-                self._daq_queue.put(msg)
+            if "DAQ" in self._verbose:
+                print(msg)
 
-                if "DAQ" in self._verbose:
-                    print(msg)
-
-        elif msg.arbitration_id == self.cro_id:
+        elif self.is_cro(msg):
             msg = CommandReceiveObject(
                 arbitration_id=msg.arbitration_id,
                 command_code=msg.data[0],
@@ -115,8 +134,6 @@ class MessageSorter(can.Listener):
 
             if "CRO" in self._verbose:
                 print(msg)
-        else:
-            pass
 
     def get_command_return_message(self, timeout: float = 0.5):
         return self._crm_queue.get(timeout=timeout)
