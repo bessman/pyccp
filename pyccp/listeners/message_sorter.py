@@ -30,6 +30,7 @@ from typing import List, Union
 from pyccp import ccp
 from pyccp.messages.command_receive import CommandReceiveObject
 from pyccp.messages.command_return import CommandReturnMessage
+from pyccp.messages.event import EventMessage
 from pyccp.messages.data_acquisition import DataAcquisitionMessage
 
 
@@ -39,14 +40,19 @@ class MessageSorter(can.Listener):
     ):
         self.dto_id = dto_id
         self.cro_id = cro_id
-        self.types = ["CRM", "EVM", "DAQ", "CRO"]
+        self.types = {
+            "CRM": CommandReturnMessage,
+            "EVM": EventMessage,
+            "DAQ": DataAcquisitionMessage,
+            "CRO": CommandReceiveObject,
+        }
 
         if verbose is True:
-            self._verbose = self.types
+            self._verbose = list(self.types.values())
         elif verbose is False:
             self._verbose = []
         elif isinstance(verbose, list):
-            self._verbose = verbose
+            self._verbose = [self.types[v] for v in verbose]
         else:
             raise TypeError("Argument 'verbose' must be bool or list")
 
@@ -76,6 +82,10 @@ class MessageSorter(can.Listener):
 
         return self.is_dto(msg) and (pid < ccp.DTOType.EVENT_MESSAGE)
 
+    def output(self, msg):
+        if any([isinstance(msg, t) for t in self._verbose]):
+            print(msg)
+
     def on_message_received(self, msg: can.Message):
         if self.is_crm(msg):
             msg = CommandReturnMessage(
@@ -89,9 +99,6 @@ class MessageSorter(can.Listener):
             )
             self._crm_queue.put(msg)
 
-            if "CRM" in self._verbose:
-                print(msg)
-
         elif self.is_evm(msg):
             msg = ccp.EVM(
                 arbitration_id=msg.arbitration_id,
@@ -102,11 +109,7 @@ class MessageSorter(can.Listener):
             )
             self._evm_queue.put(msg)
 
-            if "EVM" in self._verbose:
-                print(msg)
-
         elif self.is_daq(msg):
-            # DTO contains a Data Acquisiton Message
             msg = DataAcquisitionMessage(
                 arbitration_id=msg.arbitration_id,
                 odt_number=msg.data[0],
@@ -116,9 +119,6 @@ class MessageSorter(can.Listener):
                 is_extended_id=msg.is_extended_id,
             )
             self._daq_queue.put(msg)
-
-            if "DAQ" in self._verbose:
-                print(msg)
 
         elif self.is_cro(msg):
             msg = CommandReceiveObject(
@@ -132,8 +132,7 @@ class MessageSorter(can.Listener):
             )
             self._cro_queue.put(msg)
 
-            if "CRO" in self._verbose:
-                print(msg)
+        self.output(msg)
 
     def get_command_return_message(self, timeout: float = 0.5):
         return self._crm_queue.get(timeout=timeout)
