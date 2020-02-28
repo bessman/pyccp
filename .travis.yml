@@ -1,8 +1,7 @@
-# https://travis-ci.org/pySART/pyccp
+# https://travis-ci.org/bessman/pyccp
 language: python
 sudo: required
 python:
-    - 3.5
     - 3.6
     - 3.7
     - 3.8
@@ -10,7 +9,6 @@ python:
 
 os:
   - linux
-  - macos
 
 notifications:
   email: false
