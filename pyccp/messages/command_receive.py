@@ -6,8 +6,8 @@ Created on Fri Feb 28 11:39:03 2020
 """
 
 import can
-from typing import List, Union
 from pyccp import ccp
+from pyccp import commands
 
 
 class CommandReceiveObject(can.Message):
@@ -18,13 +18,10 @@ class CommandReceiveObject(can.Message):
 
     def __init__(
         self,
-        arbitration_id: int,
-        command_code: ccp.CommandCodes,
-        ctr: int,
-        cro_data: Union[List[int], bytearray],
-        timestamp: float = 0,
-        channel: Union[int, str] = None,
-        is_extended_id: bool = True,
+        arbitration_id: int = 0,
+        command_code: ccp.CommandCodes = None,
+        ctr: int = 0,
+        **kwargs,
     ):
         """
         Parameters
@@ -36,11 +33,6 @@ class CommandReceiveObject(can.Message):
         cro_data : list of int or bytearray
             Command data.
 
-        Raises
-        ------
-        ValueError
-            If cro_data is longer than six bytes.
-
         Returns
         -------
         None.
@@ -48,20 +40,38 @@ class CommandReceiveObject(can.Message):
         """
         self.command_code = command_code
         self.ctr = ctr
-        self.cro_data = cro_data
-        data = [command_code, ctr] + list(cro_data)
-        # Pad data array to eight bytes
-        data = data + [0] * (8 - len(data))
-        if len(data) > 8:
-            raise ValueError("CRO data must be six bytes or fewer")
+        self.parameters = kwargs
 
-        super().__init__(
-            arbitration_id=arbitration_id,
-            data=data,
-            timestamp=timestamp,
-            channel=channel,
-            is_extended_id=is_extended_id,
-        )
+        if command_code is not None:
+            data = commands.to_bytes(command_code=command_code, **self.parameters)
+            data = bytearray([command_code, ctr]) + data
+        else:
+            data = bytearray()
+
+        super().__init__(arbitration_id=arbitration_id, data=data)
+
+    def from_can_message(
+        self, msg: can.Message
+    ) -> "CommandReceiveObject":  # FIXME python4
+        if msg.is_remote_frame:
+            raise ValueError("Cannot create CRO from remote frame")
+        elif msg.is_error_frame:
+            raise ValueError("Cannot create CRO from error frame")
+        elif msg.error_state_indicator:
+            raise ValueError("Cannot create CRO from error state indicator")
+        elif msg.bitrate_switch:
+            raise ValueError("Cannot create CRO from bitrate switch")
+
+        self.timestamp = msg.timestamp
+        self.arbitration_id = msg.arbitration_id
+        self.is_extended_id = msg.is_extended_id
+        self.channel = msg.channel
+        self.is_fd = msg.is_fd
+
+        self.command_code = msg.data[0]
+        self.parameters = commands.from_bytes(data=msg.data)
+
+        return self
 
     def _from_bytes(self, start: int, length: int, byteorder: str = "big") -> int:
         """
@@ -233,22 +243,10 @@ class CommandReceiveObject(can.Message):
 
         return "  ".join(field_strings).strip()
 
-    def __repr__(self) -> str:
-        args = [
-            "timestamp={}".format(self.timestamp),
-            "command_code={:#x}".format(self.command_code),
-            "counter={:#x}".format(self.ctr),
-        ]
-
-        crm_data = ["{:#02x}".format(byte) for byte in self.cro_data]
-        args += ["cro_data=[{}]".format(", ".join(crm_data))]
-
-        return "ccp.CommandReceiveObject({})".format(", ".join(args))
-
     def __str__(self) -> str:
         field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
         field_strings.append("CRO")
         field_strings.append(str(self.ctr))
-        field_strings.append(self.parse())
+        field_strings.append(commands.to_str(self.command_code, **self.parameters))
 
         return "  ".join(field_strings).strip()
