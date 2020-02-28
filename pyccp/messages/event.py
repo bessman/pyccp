@@ -7,7 +7,7 @@ Created on Fri Feb 28 11:53:01 2020
 
 from typing import Union
 from pyccp import ccp
-from pyccp.messages import DataTransmissionObject
+from pyccp.messages.data_transmission import DataTransmissionObject
 
 
 class EventMessage(DataTransmissionObject):
