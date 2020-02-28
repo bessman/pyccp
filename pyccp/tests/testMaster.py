@@ -5,6 +5,7 @@ import can
 import unittest
 
 from pyccp import ccp
+from pyccp.messages.command_return import CommandReturnMessage
 from pyccp.master import Master
 
 
@@ -14,7 +15,7 @@ class TestMaster(unittest.TestCase):
         self.slave_bus = can.Bus("test", bustype="virtual")
         self.master = Master(transport, cro_id=0x7E1, dto_id=0x321)
         self.master.ctr = 0x27
-        self.acknowledge = ccp.CommandReturnMessage(
+        self.acknowledge = CommandReturnMessage(
             arbitration_id=0x321,
             return_code=ccp.ReturnCodes.ACKNOWLEDGE,
             ctr=self.master.ctr,

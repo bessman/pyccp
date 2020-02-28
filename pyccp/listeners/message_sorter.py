@@ -28,9 +28,12 @@ import queue
 from typing import List, Union
 
 from pyccp import ccp
+from pyccp.messages.command_receive import CommandReceiveObject
+from pyccp.messages.command_return import CommandReturnMessage
+from pyccp.messages.data_acquisition import DataAcquisitionMessage
 
 
-class CCPMessageSorter(can.Listener):
+class MessageSorter(can.Listener):
     def __init__(
         self, dto_id: int, cro_id: int, verbose: Union[bool, List[str]] = False
     ):
@@ -56,7 +59,7 @@ class CCPMessageSorter(can.Listener):
             pid = msg.data[0]
 
             if pid == ccp.DTOType.COMMAND_RETURN_MESSAGE:
-                msg = ccp.CommandReturnMessage(
+                msg = CommandReturnMessage(
                     arbitration_id=msg.arbitration_id,
                     return_code=msg.data[1],
                     ctr=msg.data[2],
@@ -85,7 +88,7 @@ class CCPMessageSorter(can.Listener):
 
             else:
                 # DTO contains a Data Acquisiton Message
-                msg = ccp.DataAcquisitionMessage(
+                msg = DataAcquisitionMessage(
                     arbitration_id=msg.arbitration_id,
                     odt_number=msg.data[0],
                     daq_data=msg.data[1:],
@@ -99,7 +102,7 @@ class CCPMessageSorter(can.Listener):
                     print(msg)
 
         elif msg.arbitration_id == self.cro_id:
-            msg = ccp.CommandReceiveObject(
+            msg = CommandReceiveObject(
                 arbitration_id=msg.arbitration_id,
                 command_code=msg.data[0],
                 ctr=msg.data[1],
@@ -126,52 +129,3 @@ class CCPMessageSorter(can.Listener):
 
     def get_command_receive_object(self, timeout: float = 0.5):
         return self._cro_queue.get(timeout=timeout)
-
-
-class DAQParser(can.Listener):
-    def __init__(
-        self,
-        dto_id: int,
-        daq_lists: List[List[ccp.ObjectDescriptorTable]] = [],
-        verbose: bool = False,
-    ):
-        self.dto_id = dto_id
-        self._verbose = verbose
-        # Flatten DAQ lists to dict of ODTs
-        # self.odt_dict is used for decoding incoming data
-        self.odt_dict = {}
-        # self.values_dict is a dictionary of queues for holding decoded data
-        self.values_dict = {}
-
-        for dl in daq_lists:
-            for odt in dl:
-                self.odt_dict[odt.number] = odt
-
-                for e in odt.elements:
-                    self.values_dict[e.name] = queue.Queue()
-
-    def add_daq_list(self, daq_list: List[ccp.ObjectDescriptorTable]):
-        for odt in daq_list:
-            self.odt_dict[odt.number]: odt
-
-            for e in odt.elements:
-                self.values_dict[e.name] = queue.Queue()
-
-    def on_message_received(self, msg: can.Message):
-        if msg.arbitration_id == self.dto_id:
-            # The message is a Data Transmission Object
-            pid = msg.data[0]
-
-            if pid < 0xFE:
-                # The DTO is a Data Acquisition Message
-                odt_number = pid
-                element_values = self.odt_dict[odt_number].decode(msg.data[1:])
-
-                for k, v in element_values.items():
-                    self.values_dict[k].put((msg.timestamp, v))
-
-                    if self._verbose:
-                        print(k + ": " + str(v))
-
-    def get(self, element_name: str):
-        return self.values_dict[element_name].get(timeout=0.5)

@@ -26,7 +26,8 @@ __copyright__ = """
 import can
 
 from pyccp import ccp
-from pyccp.listeners import CCPMessageSorter
+from pyccp.listeners.message_sorter import MessageSorter
+from pyccp.messages.command_receive import CommandReceiveObject
 from pyccp.logger import Logger
 
 
@@ -45,7 +46,7 @@ class Master:
                 {"can_id": cro_id, "can_mask": 0x1FFFFFFF, "extended": True},
             ]
         )
-        self._queue = CCPMessageSorter(dto_id, cro_id, verbose=verbose)
+        self._queue = MessageSorter(dto_id, cro_id, verbose=verbose)
         self._notifier = can.Notifier(self._transport, [self._queue])
         self.ctr = 0x00
         self.mta0_extension = 0
@@ -106,7 +107,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id,
             ccp.CommandCodes.CONNECT,
             self.ctr,
@@ -135,7 +136,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id, ccp.CommandCodes.GET_CCP_VERSION, self.ctr, [major, minor]
         )
         self._transport.send(cro)
@@ -161,7 +162,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id,
             ccp.CommandCodes.EXCHANGE_ID,
             self.ctr,
@@ -198,7 +199,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id,
             ccp.CommandCodes.SET_MTA,
             self.ctr,
@@ -229,7 +230,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id,
             ccp.CommandCodes.DNLOAD,
             self.ctr,
@@ -258,7 +259,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id, ccp.CommandCodes.UPLOAD, self.ctr, [size]
         )
         self._transport.send(cro)
@@ -295,7 +296,7 @@ class Master:
 
         dto_id = self.dto_id if dto_id is None else dto_id
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id,
             ccp.CommandCodes.GET_DAQ_SIZE,
             self.ctr,
@@ -324,7 +325,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id,
             ccp.CommandCodes.SET_DAQ_PTR,
             self.ctr,
@@ -361,7 +362,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id,
             ccp.CommandCodes.WRITE_DAQ,
             self.ctr,
@@ -410,7 +411,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id,
             ccp.CommandCodes.START_STOP,
             self.ctr,
@@ -448,7 +449,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id,
             ccp.CommandCodes.DISCONNECT,
             self.ctr,
@@ -496,7 +497,7 @@ class Master:
 
         """
 
-        cro = ccp.CommandReceiveObject(
+        cro = CommandReceiveObject(
             self.cro_id, ccp.CommandCodes.SET_S_STATUS, self.ctr, [status_bits]
         )
         self._transport.send(cro)
