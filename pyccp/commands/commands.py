@@ -5,112 +5,86 @@ Created on Fri Feb 28 16:13:29 2020
 @author: abemtk
 """
 
-from typing import List
+from typing import Dict, List
 
 from pyccp import ccp
+
+
+class CommandData:
+    def __init__(
+        self, parameters: Dict[str, List[int, int, int]] = None, byteorder="little"
+    ):
+        self.parameters = parameters
+        self.byteorder = byteorder
+
+    def from_bytes(self, data: bytearray) -> Dict[str, int]:
+        for k, (s, l, v) in self.parameters.items():
+            v = int.from_bytes(data[s, s + l], byteorder=self.byteorder)
+            self.parameters[k][2] = v
+
+        return {k: v for k, (s, l, v) in self.parameters.items()}
+
+    def __str__(self) -> str:
+        strings = []
+
+        for k, (s, l, v) in self.parameters.items():
+            strings.extend([k, hex(v)])
+
+        return "  ".join(strings)
 
 
 # #
 # Mandatory Commands.
 # #
-class Connect:
+class Connect(CommandData):
+    """Connect to slave specified by station_address. All subsequent
+    commands refer to this specific slave.
+    """
+
     def __init__(self, station_address: int = 0):
-        self.station_address = station_address
-
-    def to_bytes(self) -> bytearray:
-        return self.station_address.to_bytes(length=2, byteorder="little")
-
-    def from_bytes(self, data: bytearray) -> List[int]:
-        station_address = int.from_bytes(data[2:4], byteorder="little")
-        return station_address
-
-    def to_str(self) -> str:
-        strings = [ccp.CommandCodes.CONNECT.name, hex(self.station_address)]
-        return "  ".join(strings)
+        super().__init__(parameters={"station_address": [2, 2, station_address]})
 
 
-def connect(self, station_address: int):
-    """
-    Connect to slave specified by :param station_address. All subsequent
-    commands refer to this specific slave. If a different slave is already
-    connected, it will be disconnected. A connect command to an already
-    connected slave is acknowledged without further action.
+class GetCCPVersion(CommandData):
+    def __init__(
+        self, major: int = ccp.CCP_VERSION[0], minor: int = ccp.CCP_VERSION[1]
+    ):
+        super().__init__({"major": [2, 1, major], "minor": [3, 1, minor]})
 
-    Parameters
-    ----------
-    station_address : int
-        Station address of slave ecu (little endian).
 
-    Returns
-    -------
-    None.
+class ExchangeID(CommandData):
+    def __init__(self, device_info: int = 0):
+        super().__init__(parameters={"device_info": [2, 6, device_info]})
 
-    """
 
-    cro = CommandReceiveObject(
-        self.cro_id,
-        ccp.CommandCodes.CONNECT,
-        self.ctr,
-        station_address.to_bytes(2, "little"),
-    )
-    self._transport.send(cro)
-    self._receive()
+class SetMTA(CommandData):
+    def __init__(
+        self,
+        mta: int = ccp.MemoryTransferAddressNumber.MTA0_NUMBER,
+        extension: int = 0,
+        address: int = 0,
+    ):
+        super().__init__(
+            {
+                "mta": (2, 1, mta),
+                "extension": (3, 1, extension),
+                "address": (4, 4, address),
+            }
+        )
 
-def getCCPVersion(
-    self, major: int = ccp.CCP_VERSION[0], minor: int = ccp.CCP_VERSION[1]
-) -> tuple:
-    """
-    Send desired CCP version to slave.
+    def from_bytes(self, data: bytearray) -> Dict[str, int]:
+        mta = int.from_bytes(data[2:3], byteorder="big")
+        extension = int.from_bytes(data[3:4], byteorder="big")
+        address = int.from_bytes(data[2:8], byteorder="big")
+        return {"mta": mta, "extension": extension, "address": address}
 
-    Parameters
-    ----------
-    major : int, optional
-        Major version number. The default is ccp.CCP_VERSION[0].
-    minor : int, optional
-         Minor version number. The default is ccp.CCP_VERSION[1].
+    def __bytes__(self) -> bytes:
+        return bytes(self.device_info)
 
-    Returns
-    -------
-    tuple
-        (major, minor)
+    def __str__(self) -> str:
+        strings = [ccp.CommandCodes.EXCHANGE_ID.name, hex(self.device_info)]
+        return " ".join(strings)
 
-    """
-
-    cro = CommandReceiveObject(
-        self.cro_id, ccp.CommandCodes.GET_CCP_VERSION, self.ctr, [major, minor]
-    )
-    self._transport.send(cro)
-    data = self._receive()
-    return (data[0], data[1])
-
-def exchangeId(self, device_info: int = 0) -> tuple:
-    """
-    Exchange ID with slave.
-
-    Parameters
-    ----------
-    device_info : TYPE, optional
-       Implementation specific. The default is 0.
-
-    Returns
-    -------
-    tuple
-        (size:         Length of slave device ID in bytes,
-         dtype:        Data type qualifier of slave device ID,
-         availability: Resource availability mask,
-         protection:   Resource protection mask)
-
-    """
-
-    cro = CommandReceiveObject(
-        self.cro_id,
-        ccp.CommandCodes.EXCHANGE_ID,
-        self.ctr,
-        device_info.to_bytes(6, self.endianess),
-    )
-    self._transport.send(cro)
-    size, dtype, availability, protection, _ = self._receive()
-    return (size, dtype, availability, protection)
 
 def setMta(
     self,
@@ -148,6 +122,7 @@ def setMta(
     self._transport.send(cro)
     self._receive()
 
+
 def dnload(self, size: int, data: int) -> tuple:
     """
     Transfer data from master to slave. Up to five (5) bytes can be
@@ -180,6 +155,7 @@ def dnload(self, size: int, data: int) -> tuple:
     data = self._receive()
     return (data[0], data[1:])
 
+
 def upload(self, size: int) -> bytearray:
     """
     Transfer data from slave to master. Up to five (5) bytes can be
@@ -199,12 +175,11 @@ def upload(self, size: int) -> bytearray:
 
     """
 
-    cro = CommandReceiveObject(
-        self.cro_id, ccp.CommandCodes.UPLOAD, self.ctr, [size]
-    )
+    cro = CommandReceiveObject(self.cro_id, ccp.CommandCodes.UPLOAD, self.ctr, [size])
     self._transport.send(cro)
     data = self._receive()
     return data[:size]
+
 
 def getDaqSize(self, daqListNumber: int, dto_id: int = None) -> tuple:
     """
@@ -246,6 +221,7 @@ def getDaqSize(self, daqListNumber: int, dto_id: int = None) -> tuple:
     data = self._receive()
     return (data[0], data[1])
 
+
 def setDaqPtr(self, daqListNumber: int, odtNumber: int, elementNumber: int):
     """
     Initializes the DAQ list pointer for a subsequent write to a DAQ list.
@@ -273,6 +249,7 @@ def setDaqPtr(self, daqListNumber: int, odtNumber: int, elementNumber: int):
     )
     self._transport.send(cro)
     self._receive()
+
 
 def writeDaq(self, elementSize: int, addressExtension: int, address: int):
     """
@@ -310,6 +287,7 @@ def writeDaq(self, elementSize: int, addressExtension: int, address: int):
     )
     self._transport.send(cro)
     self._receive()
+
 
 def startStop(
     self,
@@ -366,6 +344,7 @@ def startStop(
     self._transport.send(cro)
     self._receive()
 
+
 def disconnect(self, permanent: int, station_address: int):
     """
     Disconnects the slave device. The disconnect can be temporary or
@@ -398,21 +377,27 @@ def disconnect(self, permanent: int, station_address: int):
     self._transport.send(cro)
     self._receive()
 
+
 # #
 # Optional Commands
 # #
 
+
 def test(self):
     raise NotImplementedError
+
 
 def dnload6(self):
     raise NotImplementedError
 
+
 def shortUp(self, size, address, addressExtension):
     raise NotImplementedError
 
+
 def startStopAll(self):
     raise NotImplementedError
+
 
 def setSStatus(self, status_bits: int):
     """
@@ -443,32 +428,42 @@ def setSStatus(self, status_bits: int):
     self._transport.send(cro)
     self._receive()
 
+
 def getSStatus(self):
     raise NotImplementedError
+
 
 def buildChksum(self):
     raise NotImplementedError
 
+
 def clearMemory(self):
     raise NotImplementedError
+
 
 def program(self):
     raise NotImplementedError
 
+
 def program6(self):
     raise NotImplementedError
+
 
 def move(self):
     raise NotImplementedError
 
+
 def getActiveCalPage(self):
     raise NotImplementedError
+
 
 def selectCalPage(self):
     raise NotImplementedError
 
+
 def unlock(self):
     raise NotImplementedError
+
 
 def getSeed(self):
     raise NotImplementedError
@@ -476,7 +471,7 @@ def getSeed(self):
 
 dispatcher = {
     # Mandatory Commands.
-    ccp.CONNECT: connect,
+    ccp.CONNECT: Connect,
     ccp.GET_CCP_VERSION: getCCPVersion,
     ccp.EXCHANGE_ID: exchangeId,
     ccp.SET_MTA: setMta,
@@ -503,7 +498,7 @@ dispatcher = {
     ccp.TEST: test,
     ccp.GET_ACTIVE_CAL_PAGE: getActiveCalPage,
     ccp.START_STOP_ALL: startStopAll,
-    }
+}
 
 
 def to_bytes(command_code: ccp.CommandCodes, **kwargs) -> bytearray:
