@@ -27,6 +27,7 @@ import can
 import queue
 from typing import List
 
+from pyccp.messages.data_transmission import DTOType
 from pyccp.messages.data_acquisition import ObjectDescriptorTable
 
 
@@ -34,7 +35,7 @@ class DAQParser(can.Listener):
     def __init__(
         self,
         dto_id: int,
-        daq_lists: List[List[ObjectDescriptorTable]] = [],
+        odts: List[ObjectDescriptorTable] = [],
         verbose: bool = False,
     ):
         self.dto_id = dto_id
@@ -45,35 +46,32 @@ class DAQParser(can.Listener):
         # self.values_dict is a dictionary of queues for holding decoded data
         self.values_dict = {}
 
-        for dl in daq_lists:
-            for odt in dl:
-                self.odt_dict[odt.number] = odt
-
-                for e in odt.elements:
-                    self.values_dict[e.name] = queue.Queue()
-
-    def add_daq_list(self, daq_list: List[ObjectDescriptorTable]):
-        for odt in daq_list:
-            self.odt_dict[odt.number]: odt
+        for odt in odts:
+            self.odt_dict[odt.number] = odt
 
             for e in odt.elements:
                 self.values_dict[e.name] = queue.Queue()
 
+    def add_odt(self, odt: ObjectDescriptorTable):
+        self.odt_dict[odt.number]: odt
+
+        for e in odt.elements:
+            self.values_dict[e.name] = queue.Queue()
+
     def on_message_received(self, msg: can.Message):
-        if msg.arbitration_id == self.dto_id:
+        output = []
+
+        if msg.arbitration_id == self.dto_id and msg.data[0] < DTOType.EVENT_MESSAGE:
             # The message is a Data Transmission Object
-            pid = msg.data[0]
+            odt_number = msg.data[0]
+            element_values = self.odt_dict[odt_number].decode(msg.data[1:])
 
-            if pid < 0xFE:
-                # The DTO is a Data Acquisition Message
-                odt_number = pid
-                element_values = self.odt_dict[odt_number].decode(msg.data[1:])
+            for k, v in element_values.items():
+                self.values_dict[k].put((msg.timestamp, v))
+                output.append(k + ": " + str(v))
 
-                for k, v in element_values.items():
-                    self.values_dict[k].put((msg.timestamp, v))
-
-                    if self._verbose:
-                        print(k + ": " + str(v))
+        if self._verbose and len(output) > 0:
+            print("\n".join(output))
 
     def get(self, element_name: str):
         return self.values_dict[element_name].get(timeout=0.5)
