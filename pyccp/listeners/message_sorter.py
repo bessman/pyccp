@@ -34,7 +34,30 @@ from pyccp.messages.event import EventMessage
 from pyccp.messages.data_acquisition import DataAcquisitionMessage
 
 
-class MessageSorter(can.Listener):
+class MessageTypeChecker:
+    def is_cro(self, msg: can.Message) -> bool:
+        return msg.arbitration_id == self.cro_id
+
+    def is_dto(self, msg: can.Message) -> bool:
+        return msg.arbitration_id == self.dto_id
+
+    def is_crm(self, msg: can.Message) -> bool:
+        pid = msg.data[0]
+
+        return self.is_dto(msg) and (pid == DTOType.COMMAND_RETURN_MESSAGE)
+
+    def is_evm(self, msg: can.Message) -> bool:
+        pid = msg.data[0]
+
+        return self.is_dto(msg) and (pid == DTOType.EVENT_MESSAGE)
+
+    def is_daq(self, msg: can.Message) -> bool:
+        pid = msg.data[0]
+
+        return self.is_dto(msg) and (pid < DTOType.EVENT_MESSAGE)
+
+
+class MessageSorter(can.Listener, MessageTypeChecker):
     def __init__(
         self, dto_id: int, cro_id: int, verbose: Union[bool, List[str]] = False
     ):
@@ -60,27 +83,6 @@ class MessageSorter(can.Listener):
         self._evm_queue = queue.Queue()
         self._daq_queue = queue.Queue()
         self._cro_queue = queue.Queue()
-
-    def is_cro(self, msg: can.Message) -> bool:
-        return msg.arbitration_id == self.cro_id
-
-    def is_dto(self, msg: can.Message) -> bool:
-        return msg.arbitration_id == self.dto_id
-
-    def is_crm(self, msg: can.Message) -> bool:
-        pid = msg.data[0]
-
-        return self.is_dto(msg) and (pid == DTOType.COMMAND_RETURN_MESSAGE)
-
-    def is_evm(self, msg: can.Message) -> bool:
-        pid = msg.data[0]
-
-        return self.is_dto(msg) and (pid == DTOType.EVENT_MESSAGE)
-
-    def is_daq(self, msg: can.Message) -> bool:
-        pid = msg.data[0]
-
-        return self.is_dto(msg) and (pid < DTOType.EVENT_MESSAGE)
 
     def output(self, msg):
         if any([isinstance(msg, t) for t in self._verbose]):

@@ -27,11 +27,11 @@ import can
 import queue
 from typing import List
 
-from pyccp.messages.data_transmission import DTOType
 from pyccp.messages.data_acquisition import ObjectDescriptorTable
+from pyccp.listeners.message_sorter import MessageTypeChecker
 
 
-class DAQParser(can.Listener):
+class DAQParser(can.Listener, MessageTypeChecker):
     def __init__(
         self,
         dto_id: int,
@@ -59,19 +59,17 @@ class DAQParser(can.Listener):
             self.values_dict[e.name] = queue.Queue()
 
     def on_message_received(self, msg: can.Message):
-        output = []
-
-        if msg.arbitration_id == self.dto_id and msg.data[0] < DTOType.EVENT_MESSAGE:
-            # The message is a Data Transmission Object
+        if self.is_daq(msg):
             odt_number = msg.data[0]
             element_values = self.odt_dict[odt_number].decode(msg.data[1:])
+            output = []
 
             for k, v in element_values.items():
                 self.values_dict[k].put((msg.timestamp, v))
                 output.append(k + ": " + str(v))
 
-        if self._verbose and len(output) > 0:
-            print("\n".join(output))
+            if self._verbose:
+                print("\n".join(output))
 
     def get(self, element_name: str):
         return self.values_dict[element_name].get(timeout=0.5)
