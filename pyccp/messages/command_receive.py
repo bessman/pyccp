@@ -7,12 +7,41 @@ Created on Fri Feb 28 11:39:03 2020
 
 import can
 import cantools
+import enum
 from typing import Dict
 
-from pyccp import ccp
 
-
-commands = cantools.database.load_file('commands.dbc')
+class CommandCodes(enum.IntEnum):
+    # Mandatory commands
+    CONNECT = 0x01
+    GET_CCP_VERSION = 0x1B
+    EXCHANGE_ID = 0x17
+    SET_MTA = 0x02
+    DNLOAD = 0x03
+    UPLOAD = 0x04
+    GET_DAQ_SIZE = 0x14
+    SET_DAQ_PTR = 0x15
+    WRITE_DAQ = 0x16
+    START_STOP = 0x06
+    DISCONNECT = 0x07
+    # Optional commands
+    GET_SEED = 0x12
+    UNLOCK = 0x13
+    DNLOAD_6 = 0x23
+    SHORT_UP = 0x0F
+    SELECT_CAL_PAGE = 0x11
+    SET_S_STATUS = 0x0C
+    GET_S_STATUS = 0x0D
+    BUILD_CHKSUM = 0x0E
+    CLEAR_MEMORY = 0x10
+    PROGRAM = 0x18
+    PROGRAM_6 = 0x22
+    MOVE = 0x19
+    TEST = 0x05
+    GET_ACTIVE_CAL_PAGE = 0x09
+    START_STOP_ALL = 0x08
+    DIAG_SERVICE = 0x20
+    ACTION_SERVICE = 0x21
 
 
 class CommandReceiveObject(can.Message):
@@ -24,19 +53,19 @@ class CommandReceiveObject(can.Message):
     def __init__(
         self,
         arbitration_id: int = 0,
-        command_code: ccp.CommandCodes = None,
+        command_code: CommandCodes = None,
         ctr: int = 0,
-        **kwargs,
+        **kwargs: int,
     ):
         """
         Parameters
         ----------
-        command_code : ccp.CommandCodes
+        command_code : CommandCodes
             The command to send to the slave.
         ctr : int
             Command counter, 0-0xFF. Used to associate CROs with CRMs.
-        cro_data : list of int or bytearray
-            Command data.
+        **kwargs : int
+            Keyword arguments for the command specified by command_code.
 
         Returns
         -------
@@ -53,18 +82,19 @@ class CommandReceiveObject(can.Message):
 
         super().__init__(arbitration_id=arbitration_id, data=data)
 
-    def encode(self, **kwargs) -> bytes:
-        parameters = kwargs
-        parameters["command_code"] = self.command_code
-        parameters["ctr"] = self.ctr
-        return dispatcher[self.command_code].encode(parameters)
-    
-    def decode(self) -> Dict[str, int]:
-        return dispatcher[self.command_code].decode(self.data)
+    def from_can_message(self, msg: can.Message):
+        self._check_msg_type(msg)
+        self.timestamp = msg.timestamp
+        self.arbitration_id = msg.arbitration_id
+        self.is_extended_id = msg.is_extended_id
+        self.channel = msg.channel
+        self.is_fd = msg.is_fd
+        self.command_code = msg.data[0]
+        self.data = msg.data
 
-    def from_can_message(
-        self, msg: can.Message
-    ) -> "CommandReceiveObject":  # FIXME python4
+        return self
+
+    def _check_msg_type(self, msg: can.Message):
         if msg.is_remote_frame:
             raise ValueError("Cannot create CRO from remote frame")
         elif msg.is_error_frame:
@@ -74,62 +104,59 @@ class CommandReceiveObject(can.Message):
         elif msg.bitrate_switch:
             raise ValueError("Cannot create CRO from bitrate switch")
 
-        self.timestamp = msg.timestamp
-        self.arbitration_id = msg.arbitration_id
-        self.is_extended_id = msg.is_extended_id
-        self.channel = msg.channel
-        self.is_fd = msg.is_fd
+    def encode(self, **kwargs: int) -> bytes:
+        parameters = kwargs
+        parameters["command_code"] = self.command_code
+        parameters["ctr"] = self.ctr
 
-        self.command_code = msg.data[0]
-        self.parameters = commands.from_bytes(data=msg.data)
+        return COMMAND_DISPATCH[self.command_code].encode(parameters)
 
-        return self
+    def decode(self) -> Dict[str, int]:
+        return COMMAND_DISPATCH[self.command_code].decode(self.data)
 
     def __str__(self) -> str:
         field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
         field_strings.append("CRO")
         field_strings.append(str(self.ctr))
-        field_strings.append(ccp.CommandCodes(self.command_code).name)
-        field_strings.append(commands.to_str(self.command_code, **self.parameters))
+        field_strings.append(CommandCodes(self.command_code).name)
+
+        for k, v in self.decode().items():
+            if not (k == "command_code"):
+                field_strings.extend([k, hex(v)])
 
         return "  ".join(field_strings).strip()
 
-    def __str__(self) -> str:
-        strings = []
 
-        for k, (s, l, v) in self.parameters.items():
-            strings.extend([k, hex(v)])
-
-        return "  ".join(strings)
+COMMANDS_DB = cantools.database.load_file("pyccp/messages/commands.dbc")
 
 
-dispatcher = {
-    # Mandatory Commands.
-    ccp.CONNECT: commands.get_message_by_name("connect"),
-    ccp.GET_CCP_VERSION: commands.get_message_by_name("get_ccp_version"),
-    ccp.EXCHANGE_ID: commands.get_message_by_name("exchange_id"),
-    ccp.SET_MTA: commands.get_message_by_name("set_mta"),
-    ccp.DNLOAD: commands.get_message_by_name("dnload"),
-    ccp.UPLOAD: commands.get_message_by_name("upload"),
-    ccp.GET_DAQ_SIZE: commands.get_message_by_name("get_daq_size"),
-    ccp.SET_DAQ_PTR: commands.get_message_by_name("set_daq_ptr"),
-    ccp.WRITE_DAQ: commands.get_message_by_name("write_daq"),
-    ccp.START_STOP: commands.get_message_by_name("start_stop"),
-    ccp.DISCONNECT: commands.get_message_by_name("disconnect"),
-    # Optional Commands.
-    # ccp.GET_SEED: getSeed,
-    # ccp.UNLOCK: unlock,
-    # ccp.DNLOAD_6: dnload6,
-    # ccp.SHORT_UP: shortUp,
-    # ccp.SELECT_CAL_PAGE: selectCalPage,
-    ccp.SET_S_STATUS: commands.get_message_by_name("set_s_status"),
-    # ccp.GET_S_STATUS: getSStatus,
-    # ccp.BUILD_CHKSUM: buildChksum,
-    # ccp.CLEAR_MEMORY: clearMemory,
-    # ccp.PROGRAM: program,
-    # ccp.PROGRAM_6: program6,
-    # ccp.MOVE: move,
-    # ccp.TEST: test,
-    # ccp.GET_ACTIVE_CAL_PAGE: getActiveCalPage,
-    # ccp.START_STOP_ALL: startStopAll,
+COMMAND_DISPATCH = {
+    # Mandatory commands
+    CommandCodes.CONNECT: COMMANDS_DB.get_message_by_name("connect"),
+    CommandCodes.GET_CCP_VERSION: COMMANDS_DB.get_message_by_name("get_ccp_version"),
+    CommandCodes.EXCHANGE_ID: COMMANDS_DB.get_message_by_name("exchange_id"),
+    CommandCodes.SET_MTA: COMMANDS_DB.get_message_by_name("set_mta"),
+    CommandCodes.DNLOAD: COMMANDS_DB.get_message_by_name("dnload"),
+    CommandCodes.UPLOAD: COMMANDS_DB.get_message_by_name("upload"),
+    CommandCodes.GET_DAQ_SIZE: COMMANDS_DB.get_message_by_name("get_daq_size"),
+    CommandCodes.SET_DAQ_PTR: COMMANDS_DB.get_message_by_name("set_daq_ptr"),
+    CommandCodes.WRITE_DAQ: COMMANDS_DB.get_message_by_name("write_daq"),
+    CommandCodes.START_STOP: COMMANDS_DB.get_message_by_name("start_stop"),
+    CommandCodes.DISCONNECT: COMMANDS_DB.get_message_by_name("disconnect"),
+    # Optional commands
+    # CommandCodes.GET_SEED: getSeed,
+    # CommandCodes.UNLOCK: unlock,
+    # CommandCodes.DNLOAD_6: dnload6,
+    # CommandCodes.SHORT_UP: shortUp,
+    # CommandCodes.SELECT_CAL_PAGE: selectCalPage,
+    CommandCodes.SET_S_STATUS: COMMANDS_DB.get_message_by_name("set_s_status"),
+    # CommandCodes.GET_S_STATUS: getSStatus,
+    # CommandCodes.BUILD_CHKSUM: buildChksum,
+    # CommandCodes.CLEAR_MEMORY: clearMemory,
+    # CommandCodes.PROGRAM: program,
+    # CommandCodes.PROGRAM_6: program6,
+    # CommandCodes.MOVE: move,
+    # CommandCodes.TEST: test,
+    # CommandCodes.GET_ACTIVE_CAL_PAGE: getActiveCalPage,
+    # CommandCodes.START_STOP_ALL: startStopAll,
 }

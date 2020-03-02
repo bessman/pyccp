@@ -27,7 +27,8 @@ import can
 
 from pyccp import ccp
 from pyccp.listeners.message_sorter import MessageSorter
-from pyccp.messages.command_receive import CommandReceiveObject
+from pyccp.messages.command_receive import CommandReceiveObject, CommandCodes
+from pyccp.messages.command_return import ReturnCodes
 from pyccp.logger import Logger
 
 
@@ -54,7 +55,7 @@ class Master:
         self.endianess = "big"
         self.logger = Logger("pyccp.master")
 
-    def _send(self, command_code: ccp.CommandCodes, **kwargs):
+    def _send(self, command_code: CommandCodes, **kwargs):
         cro = CommandReceiveObject(
             arbitration_id=self.cro_id,
             command_code=command_code,
@@ -83,10 +84,10 @@ class Master:
         if crm.ctr == self.ctr:
             self.ctr = (self.ctr + 1) % 0x100
 
-            if crm.return_code == ccp.ReturnCodes.ACKNOWLEDGE:
+            if crm.return_code == ReturnCodes.ACKNOWLEDGE:
                 return crm.crm_data
             else:
-                raise ccp.CcpError(ccp.ReturnCodes(crm.return_code).name)
+                raise ccp.CcpError(ReturnCodes(crm.return_code).name)
         else:
             raise ccp.CcpError("Counter mismatch")
 

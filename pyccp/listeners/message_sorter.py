@@ -27,8 +27,8 @@ import can
 import queue
 from typing import List, Union
 
-from pyccp import ccp
 from pyccp.messages.command_receive import CommandReceiveObject
+from pyccp.messages.data_transmission import DTOType
 from pyccp.messages.command_return import CommandReturnMessage
 from pyccp.messages.event import EventMessage
 from pyccp.messages.data_acquisition import DataAcquisitionMessage
@@ -70,17 +70,17 @@ class MessageSorter(can.Listener):
     def is_crm(self, msg: can.Message) -> bool:
         pid = msg.data[0]
 
-        return self.is_dto(msg) and (pid == ccp.DTOType.COMMAND_RETURN_MESSAGE)
+        return self.is_dto(msg) and (pid == DTOType.COMMAND_RETURN_MESSAGE)
 
     def is_evm(self, msg: can.Message) -> bool:
         pid = msg.data[0]
 
-        return self.is_dto(msg) and (pid == ccp.DTOType.EVENT_MESSAGE)
+        return self.is_dto(msg) and (pid == DTOType.EVENT_MESSAGE)
 
     def is_daq(self, msg: can.Message) -> bool:
         pid = msg.data[0]
 
-        return self.is_dto(msg) and (pid < ccp.DTOType.EVENT_MESSAGE)
+        return self.is_dto(msg) and (pid < DTOType.EVENT_MESSAGE)
 
     def output(self, msg):
         if any([isinstance(msg, t) for t in self._verbose]):
@@ -100,7 +100,7 @@ class MessageSorter(can.Listener):
             self._crm_queue.put(msg)
 
         elif self.is_evm(msg):
-            msg = ccp.EVM(
+            msg = EventMessage(
                 arbitration_id=msg.arbitration_id,
                 return_code=msg.data[1],
                 timestamp=msg.timestamp,
@@ -121,15 +121,7 @@ class MessageSorter(can.Listener):
             self._daq_queue.put(msg)
 
         elif self.is_cro(msg):
-            msg = CommandReceiveObject(
-                arbitration_id=msg.arbitration_id,
-                command_code=msg.data[0],
-                ctr=msg.data[1],
-                cro_data=msg.data[2:],
-                timestamp=msg.timestamp,
-                channel=msg.channel,
-                is_extended_id=msg.is_extended_id,
-            )
+            msg = CommandReceiveObject().from_can_message(msg)
             self._cro_queue.put(msg)
 
         self.output(msg)

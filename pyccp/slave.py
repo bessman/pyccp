@@ -27,6 +27,9 @@ import enum
 from can import Bus, Message
 
 from pyccp import ccp
+from pyccp.messages.command_receive import CommandCodes
+from pyccp.messages.data_transmission import DTOType
+from pyccp.messages.command_return import ReturnCodes
 from pyccp.logger import Logger
 
 
@@ -74,7 +77,7 @@ class Slave(object):
         payload = list(payload) + [0] * (5 - len(payload))
         message = Message(
             arbitration_id=self.masterAddress,
-            data=[ccp.DTOType.COMMAND_RETURN_MESSAGE, returnCode, counter, *payload],
+            data=[DTOType.COMMAND_RETURN_MESSAGE, returnCode, counter, *payload],
         )
         self.transport.send(message)
 
@@ -98,15 +101,15 @@ class Slave(object):
         # print("connecting", counter, payload)
         if stationAddress == self.stationAddress:
             self.setState(SlaveState.CONNECTED)
-            self.sendDTO(ccp.ReturnCodes.ACKNOWLEDGE, counter)
+            self.sendDTO(ReturnCodes.ACKNOWLEDGE, counter)
         else:
             self.setState(SlaveState.DISCONNECTED)
 
     def onGetCCPVersion(self, counter, payload):
         # This command is expected to be executed prior to the EXCHANGE_ID command.
         self.logger.debug("onGetCCPVersion")
-        self.sendDTO(ccp.ReturnCodes.ACKNOWLEDGE, counter, ccp.CCP_VERSION)
-        # self.sendDTOIfConnected(ccp.ReturnCodes.ACKNOWLEDGE, counter, ccp.CCP_VERSION)
+        self.sendDTO(ReturnCodes.ACKNOWLEDGE, counter, ccp.CCP_VERSION)
+        # self.sendDTOIfConnected(ReturnCodes.ACKNOWLEDGE, counter, ccp.CCP_VERSION)
 
     def onTest(self, counter, payload):
         self.logger.debug("onTest")
@@ -184,30 +187,30 @@ class Slave(object):
         self.logger.debug("onGetSeed")
 
     COMMAND_HANDLERS = {
-        ccp.CommandCodes.CONNECT: onConnect,
-        ccp.CommandCodes.GET_CCP_VERSION: onGetCCPVersion,
-        ccp.CommandCodes.TEST: onTest,
-        ccp.CommandCodes.EXCHANGE_ID: onExchangeId,
-        ccp.CommandCodes.SET_MTA: onSetMta,
-        ccp.CommandCodes.DNLOAD: onDnload,
-        ccp.CommandCodes.DNLOAD_6: onDnload6,
-        ccp.CommandCodes.UPLOAD: onUpload,
-        ccp.CommandCodes.SHORT_UP: onShortUp,
-        ccp.CommandCodes.GET_DAQ_SIZE: onGetDaqSize,
-        ccp.CommandCodes.SET_DAQ_PTR: onSetDaqPtr,
-        ccp.CommandCodes.WRITE_DAQ: onWriteDaq,
-        ccp.CommandCodes.START_STOP_ALL: onStartStopAll,
-        ccp.CommandCodes.START_STOP: onStartStop,
-        ccp.CommandCodes.DISCONNECT: onDisconnect,
-        ccp.CommandCodes.SET_S_STATUS: onSetSStatus,
-        ccp.CommandCodes.GET_S_STATUS: onGetSStatus,
-        ccp.CommandCodes.BUILD_CHKSUM: onBuildChksum,
-        ccp.CommandCodes.CLEAR_MEMORY: onClearMemory,
-        ccp.CommandCodes.PROGRAM: onProgram,
-        ccp.CommandCodes.PROGRAM_6: onProgram6,
-        ccp.CommandCodes.MOVE: onMove,
-        ccp.CommandCodes.GET_ACTIVE_CAL_PAGE: onGetActiveCalPage,
-        ccp.CommandCodes.SELECT_CAL_PAGE: onSelectCalPage,
-        ccp.CommandCodes.UNLOCK: onUnlock,
-        ccp.CommandCodes.GET_SEED: onGetSeed,
+        CommandCodes.CONNECT: onConnect,
+        CommandCodes.GET_CCP_VERSION: onGetCCPVersion,
+        CommandCodes.TEST: onTest,
+        CommandCodes.EXCHANGE_ID: onExchangeId,
+        CommandCodes.SET_MTA: onSetMta,
+        CommandCodes.DNLOAD: onDnload,
+        CommandCodes.DNLOAD_6: onDnload6,
+        CommandCodes.UPLOAD: onUpload,
+        CommandCodes.SHORT_UP: onShortUp,
+        CommandCodes.GET_DAQ_SIZE: onGetDaqSize,
+        CommandCodes.SET_DAQ_PTR: onSetDaqPtr,
+        CommandCodes.WRITE_DAQ: onWriteDaq,
+        CommandCodes.START_STOP_ALL: onStartStopAll,
+        CommandCodes.START_STOP: onStartStop,
+        CommandCodes.DISCONNECT: onDisconnect,
+        CommandCodes.SET_S_STATUS: onSetSStatus,
+        CommandCodes.GET_S_STATUS: onGetSStatus,
+        CommandCodes.BUILD_CHKSUM: onBuildChksum,
+        CommandCodes.CLEAR_MEMORY: onClearMemory,
+        CommandCodes.PROGRAM: onProgram,
+        CommandCodes.PROGRAM_6: onProgram6,
+        CommandCodes.MOVE: onMove,
+        CommandCodes.GET_ACTIVE_CAL_PAGE: onGetActiveCalPage,
+        CommandCodes.SELECT_CAL_PAGE: onSelectCalPage,
+        CommandCodes.UNLOCK: onUnlock,
+        CommandCodes.GET_SEED: onGetSeed,
     }

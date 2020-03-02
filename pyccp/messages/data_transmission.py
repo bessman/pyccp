@@ -6,8 +6,13 @@ Created on Fri Feb 28 11:43:48 2020
 """
 
 import can
+import enum
 from typing import List, Union
-from pyccp import ccp
+
+
+class DTOType(enum.IntEnum):
+    COMMAND_RETURN_MESSAGE = 0xFF
+    EVENT_MESSAGE = 0xFE
 
 
 class DataTransmissionObject(can.Message):
@@ -25,7 +30,7 @@ class DataTransmissionObject(can.Message):
     def __init__(
         self,
         arbitration_id: int,
-        pid: Union[ccp.DTOType, int],
+        pid: Union[DTOType, int],
         dto_data: Union[List[int], bytearray] = [],
         timestamp: float = 0,
         channel: Union[int, str] = None,
@@ -34,7 +39,7 @@ class DataTransmissionObject(can.Message):
         """
         Parameters
         ----------
-        pid : ccp.DTOType or int
+        pid : DTOType or int
             0xFF for CRM,
             0xFE for EVM,
             0-0xFD for DAQ.
