@@ -29,7 +29,6 @@ from pyccp import ccp
 from pyccp.listeners.message_sorter import MessageSorter
 from pyccp.messages.command_receive import CommandReceiveObject, CommandCodes
 from pyccp.messages.command_return import ReturnCodes
-from pyccp.logger import Logger
 
 
 class Master:
@@ -50,10 +49,6 @@ class Master:
         self._queue = MessageSorter(dto_id, cro_id, verbose=verbose)
         self._notifier = can.Notifier(self._transport, [self._queue])
         self.ctr = 0x00
-        self.mta0_extension = 0
-        self.mta0_address = 0
-        self.endianess = "big"
-        self.logger = Logger("pyccp.master")
 
     def _send(self, command_code: CommandCodes, **kwargs):
         cro = CommandReceiveObject(

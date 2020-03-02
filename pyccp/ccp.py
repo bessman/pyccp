@@ -27,9 +27,6 @@ import can
 import enum
 
 
-MAX_CTO = 0x0008
-MAX_DTO = 0x0008
-
 CCP_VERSION = (2, 1)
 
 
@@ -43,15 +40,6 @@ class MemoryTransferAddressNumber(enum.IntEnum):
 
     MTA0_NUMBER = 0
     MTA1_NUMBER = 1
-
-
-class State(enum.IntEnum):
-    pass
-
-
-class Memory(object):
-    def __init__(self):
-        pass
 
 
 class CcpError(can.CanError):
