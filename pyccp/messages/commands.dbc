@@ -41,56 +41,56 @@ BO_ 0 connect: 8 Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 get_ccp_version: 8 Vector__XXX
+BO_ 1 get_ccp_version: 8 Vector__XXX
  SG_ minor : 24|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ major : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 exchange_id: 8 Vector__XXX
+BO_ 2 exchange_id: 8 Vector__XXX
  SG_ device_info : 16|48@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 set_mta: 8 Vector__XXX
+BO_ 3 set_mta: 8 Vector__XXX
  SG_ address : 39|32@0+ (1,0) [0|0] "" Vector__XXX
  SG_ extension : 24|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ mta : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 dnload: 8 Vector__XXX
+BO_ 4 dnload: 8 Vector__XXX
  SG_ data : 31|40@0+ (1,0) [0|0] "" Vector__XXX
  SG_ size : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 upload: 8 Vector__XXX
+BO_ 5 upload: 8 Vector__XXX
  SG_ size : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 get_daq_size: 8 Vector__XXX
+BO_ 6 get_daq_size: 8 Vector__XXX
  SG_ dto_id : 39|32@0+ (1,0) [0|0] "" Vector__XXX
  SG_ daq_list_number : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 set_daq_ptr: 8 Vector__XXX
+BO_ 7 set_daq_ptr: 8 Vector__XXX
  SG_ element_number : 32|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ odt_number : 24|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ daq_list_number : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 write_daq: 8 Vector__XXX
+BO_ 8 write_daq: 8 Vector__XXX
  SG_ address : 39|32@0+ (1,0) [0|0] "" Vector__XXX
  SG_ extension : 24|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ element_size : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 start_stop: 8 Vector__XXX
+BO_ 9 start_stop: 8 Vector__XXX
  SG_ rate_prescaler : 55|16@0+ (1,0) [0|0] "" Vector__XXX
  SG_ event_channel : 40|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ last_odt_number : 32|8@1+ (1,0) [0|0] "" Vector__XXX
@@ -99,13 +99,13 @@ BO_ 0 start_stop: 8 Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 disconnect: 8 Vector__XXX
+BO_ 10 disconnect: 8 Vector__XXX
  SG_ station_address : 32|16@1+ (1,0) [0|0] "" Vector__XXX
  SG_ permanent : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
-BO_ 0 set_s_status: 8 Vector__XXX
+BO_ 11 set_s_status: 8 Vector__XXX
  SG_ status_bits : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
