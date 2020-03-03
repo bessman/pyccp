@@ -5,11 +5,11 @@ import can
 import queue
 from typing import List
 
-from pyccp.messages.data_acquisition import ObjectDescriptorTable
-from pyccp.listeners.message_sorter import MessageTypeChecker
+from ..messages.data_acquisition import ObjectDescriptorTable
+from ..messages.ccp_message import is_daq
 
 
-class DAQParser(can.Listener, MessageTypeChecker):
+class DAQParser(can.Listener):
     def __init__(
         self,
         dto_id: int,
@@ -37,7 +37,7 @@ class DAQParser(can.Listener, MessageTypeChecker):
             self.values_dict[e.name] = queue.Queue()
 
     def on_message_received(self, msg: can.Message):
-        if self.is_daq(msg):
+        if is_daq(msg=msg, dto_id=self.dto_id):
             odt_number = msg.data[0]
             element_values = self.odt_dict[odt_number].decode(msg.data[1:])
             output = []

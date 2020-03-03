@@ -2,49 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import can
-import cantools
-import enum
 from typing import Dict
 
-
-class CommandCodes(enum.IntEnum):
-    # Mandatory commands
-    CONNECT = 0x01
-    GET_CCP_VERSION = 0x1B
-    EXCHANGE_ID = 0x17
-    SET_MTA = 0x02
-    DNLOAD = 0x03
-    UPLOAD = 0x04
-    GET_DAQ_SIZE = 0x14
-    SET_DAQ_PTR = 0x15
-    WRITE_DAQ = 0x16
-    START_STOP = 0x06
-    DISCONNECT = 0x07
-    # Optional commands
-    GET_SEED = 0x12
-    UNLOCK = 0x13
-    DNLOAD_6 = 0x23
-    SHORT_UP = 0x0F
-    SELECT_CAL_PAGE = 0x11
-    SET_S_STATUS = 0x0C
-    GET_S_STATUS = 0x0D
-    BUILD_CHKSUM = 0x0E
-    CLEAR_MEMORY = 0x10
-    PROGRAM = 0x18
-    PROGRAM_6 = 0x22
-    MOVE = 0x19
-    TEST = 0x05
-    GET_ACTIVE_CAL_PAGE = 0x09
-    START_STOP_ALL = 0x08
-    DIAG_SERVICE = 0x20
-    ACTION_SERVICE = 0x21
+from .. import MAX_DLC, CRO_CMD_BYTE, CRO_CTR_BYTE
+from .ccp_message import CCPMessage
+from . import CommandCodes, COMMAND_DISPATCH
 
 
-class CommandReceiveObject(can.Message):
+class CommandReceiveObject(CCPMessage):
     """
     Command Receive Objects (CRO) are sent from the master to the slave and
     contain commands and associated data which the slave must handle.
     """
+    __slots__ = ("command_code", "ctr",)
 
     def __init__(
         self,
@@ -74,31 +44,19 @@ class CommandReceiveObject(can.Message):
         if command_code is not None:
             data = self.encode(**kwargs)
         else:
-            data = bytearray()
+            data = bytearray(MAX_DLC)
+            data[CRO_CMD_BYTE] = 0
+            data[CRO_CTR_BYTE] = ctr
 
         super().__init__(arbitration_id=arbitration_id, data=data)
 
-    def from_can_message(self, msg: can.Message):
-        self._check_msg_type(msg)
-        self.timestamp = msg.timestamp
-        self.arbitration_id = msg.arbitration_id
-        self.is_extended_id = msg.is_extended_id
-        self.channel = msg.channel
-        self.is_fd = msg.is_fd
-        self.command_code = msg.data[0]
-        self.data = msg.data
+    @classmethod
+    def from_can_message(cls, msg: can.Message):
+        cro = super().from_can_message(msg)
+        cro.command_code = msg.data[CRO_CMD_BYTE]
+        cro.ctr = msg.data[CRO_CTR_BYTE]
 
-        return self
-
-    def _check_msg_type(self, msg: can.Message):
-        if msg.is_remote_frame:
-            raise ValueError("Cannot create CRO from remote frame")
-        elif msg.is_error_frame:
-            raise ValueError("Cannot create CRO from error frame")
-        elif msg.error_state_indicator:
-            raise ValueError("Cannot create CRO from error state indicator")
-        elif msg.bitrate_switch:
-            raise ValueError("Cannot create CRO from bitrate switch")
+        return cro
 
     def encode(self, **kwargs: int) -> bytes:
         parameters = kwargs
@@ -121,38 +79,3 @@ class CommandReceiveObject(can.Message):
                 field_strings.extend([k, hex(v)])
 
         return "  ".join(field_strings).strip()
-
-
-COMMANDS_DB = cantools.database.load_file("pyccp/messages/commands.dbc")
-
-
-COMMAND_DISPATCH = {
-    # Mandatory commands
-    CommandCodes.CONNECT: COMMANDS_DB.get_message_by_name("connect"),
-    CommandCodes.GET_CCP_VERSION: COMMANDS_DB.get_message_by_name("get_ccp_version"),
-    CommandCodes.EXCHANGE_ID: COMMANDS_DB.get_message_by_name("exchange_id"),
-    CommandCodes.SET_MTA: COMMANDS_DB.get_message_by_name("set_mta"),
-    CommandCodes.DNLOAD: COMMANDS_DB.get_message_by_name("dnload"),
-    CommandCodes.UPLOAD: COMMANDS_DB.get_message_by_name("upload"),
-    CommandCodes.GET_DAQ_SIZE: COMMANDS_DB.get_message_by_name("get_daq_size"),
-    CommandCodes.SET_DAQ_PTR: COMMANDS_DB.get_message_by_name("set_daq_ptr"),
-    CommandCodes.WRITE_DAQ: COMMANDS_DB.get_message_by_name("write_daq"),
-    CommandCodes.START_STOP: COMMANDS_DB.get_message_by_name("start_stop"),
-    CommandCodes.DISCONNECT: COMMANDS_DB.get_message_by_name("disconnect"),
-    # Optional commands
-    # CommandCodes.GET_SEED: getSeed,
-    # CommandCodes.UNLOCK: unlock,
-    # CommandCodes.DNLOAD_6: dnload6,
-    # CommandCodes.SHORT_UP: shortUp,
-    # CommandCodes.SELECT_CAL_PAGE: selectCalPage,
-    CommandCodes.SET_S_STATUS: COMMANDS_DB.get_message_by_name("set_s_status"),
-    # CommandCodes.GET_S_STATUS: getSStatus,
-    # CommandCodes.BUILD_CHKSUM: buildChksum,
-    # CommandCodes.CLEAR_MEMORY: clearMemory,
-    # CommandCodes.PROGRAM: program,
-    # CommandCodes.PROGRAM_6: program6,
-    # CommandCodes.MOVE: move,
-    # CommandCodes.TEST: test,
-    # CommandCodes.GET_ACTIVE_CAL_PAGE: getActiveCalPage,
-    # CommandCodes.START_STOP_ALL: startStopAll,
-}

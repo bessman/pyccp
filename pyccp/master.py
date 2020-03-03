@@ -25,10 +25,10 @@ __copyright__ = """
 
 import can
 
-from pyccp import ccp
-from pyccp.listeners.message_sorter import MessageSorter
-from pyccp.messages.command_receive import CommandReceiveObject, CommandCodes
-from pyccp.messages.command_return import ReturnCodes
+from .ccp import CcpError
+from .messages.command_receive import CommandReceiveObject
+from .messages import CommandCodes, ReturnCodes
+from .listeners.message_sorter import MessageSorter
 
 
 class Master:
@@ -80,11 +80,11 @@ class Master:
             self.ctr = (self.ctr + 1) % 0x100
 
             if crm.return_code == ReturnCodes.ACKNOWLEDGE:
-                return crm.crm_data
+                return crm.data[3:]
             else:
-                raise ccp.CcpError(ReturnCodes(crm.return_code).name)
+                raise CcpError(ReturnCodes(crm.return_code).name)
         else:
-            raise ccp.CcpError("Counter mismatch")
+            raise CcpError("Counter mismatch")
 
     def stop(self):
         self._notifier.stop()

@@ -4,9 +4,9 @@
 import can
 import unittest
 
-from pyccp.messages.command_receive import CommandCodes
-from pyccp.messages.command_return import CommandReturnMessage, ReturnCodes
-from pyccp.master import Master
+from ..master import Master
+from ..messages.command_return import CommandReturnMessage
+from ..messages import CommandCodes, ReturnCodes
 
 
 class TestMaster(unittest.TestCase):
@@ -19,7 +19,6 @@ class TestMaster(unittest.TestCase):
             arbitration_id=0x321,
             return_code=ReturnCodes.ACKNOWLEDGE,
             ctr=self.master.ctr,
-            crm_data=5 * [0],
         )
 
     def tearDown(self):

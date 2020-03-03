@@ -5,37 +5,14 @@ import can
 import queue
 from typing import List, Union
 
-from pyccp.messages.command_receive import CommandReceiveObject
-from pyccp.messages.data_transmission import DTOType
-from pyccp.messages.command_return import CommandReturnMessage
-from pyccp.messages.event import EventMessage
-from pyccp.messages.data_acquisition import DataAcquisitionMessage
+from ..messages.command_receive import CommandReceiveObject
+from ..messages.command_return import CommandReturnMessage
+from ..messages.event import EventMessage
+from ..messages.data_acquisition import DataAcquisitionMessage
+from ..messages.ccp_message import is_crm, is_cro, is_daq, is_evm
 
 
-class MessageTypeChecker:
-    def is_cro(self, msg: can.Message) -> bool:
-        return msg.arbitration_id == self.cro_id
-
-    def is_dto(self, msg: can.Message) -> bool:
-        return msg.arbitration_id == self.dto_id
-
-    def is_crm(self, msg: can.Message) -> bool:
-        pid = msg.data[0]
-
-        return self.is_dto(msg) and (pid == DTOType.COMMAND_RETURN_MESSAGE)
-
-    def is_evm(self, msg: can.Message) -> bool:
-        pid = msg.data[0]
-
-        return self.is_dto(msg) and (pid == DTOType.EVENT_MESSAGE)
-
-    def is_daq(self, msg: can.Message) -> bool:
-        pid = msg.data[0]
-
-        return self.is_dto(msg) and (pid < DTOType.EVENT_MESSAGE)
-
-
-class MessageSorter(can.Listener, MessageTypeChecker):
+class MessageSorter(can.Listener):
     def __init__(
         self, dto_id: int, cro_id: int, verbose: Union[bool, List[str]] = False
     ):
@@ -67,40 +44,19 @@ class MessageSorter(can.Listener, MessageTypeChecker):
             print(msg)
 
     def on_message_received(self, msg: can.Message):
-        if self.is_crm(msg):
-            msg = CommandReturnMessage(
-                arbitration_id=msg.arbitration_id,
-                return_code=msg.data[1],
-                ctr=msg.data[2],
-                crm_data=msg.data[3:],
-                timestamp=msg.timestamp,
-                channel=msg.channel,
-                is_extended_id=msg.is_extended_id,
-            )
+        if is_crm(msg=msg, dto_id=self.dto_id):
+            msg = CommandReturnMessage.from_can_message(msg)
             self._crm_queue.put(msg)
 
-        elif self.is_evm(msg):
-            msg = EventMessage(
-                arbitration_id=msg.arbitration_id,
-                return_code=msg.data[1],
-                timestamp=msg.timestamp,
-                channel=msg.channel,
-                is_extended_id=msg.is_extended_id,
-            )
+        elif is_evm(msg=msg, dto_id=self.dto_id):
+            msg = EventMessage.from_can_message(msg)
             self._evm_queue.put(msg)
 
-        elif self.is_daq(msg):
-            msg = DataAcquisitionMessage(
-                arbitration_id=msg.arbitration_id,
-                odt_number=msg.data[0],
-                daq_data=msg.data[1:],
-                timestamp=msg.timestamp,
-                channel=msg.channel,
-                is_extended_id=msg.is_extended_id,
-            )
+        elif is_daq(msg=msg, dto_id=self.dto_id):
+            msg = DataAcquisitionMessage().from_can_message(msg)
             self._daq_queue.put(msg)
 
-        elif self.is_cro(msg):
+        elif is_cro(msg=msg, cro_id=self.cro_id):
             msg = CommandReceiveObject().from_can_message(msg)
             self._cro_queue.put(msg)
 

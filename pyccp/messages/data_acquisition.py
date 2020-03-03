@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import can
 import cantools
 import enum
 import decimal
 from typing import List, Union
-from pyccp.messages.data_transmission import DataTransmissionObject
+
+from .. import MAX_DLC, DTO_PID_BYTE
+from .data_transmission import DataTransmissionObject
 
 
 class DataAcquisitionMessage(DataTransmissionObject):
@@ -17,12 +20,8 @@ class DataAcquisitionMessage(DataTransmissionObject):
 
     def __init__(
         self,
-        arbitration_id: int,
-        odt_number: int,
-        daq_data: Union[List[int], bytearray],
-        timestamp: float = 0,
-        channel: Union[int, str] = None,
-        is_extended_id: bool = True,
+        arbitration_id: int = 0,
+        odt_number: int = 0,
     ):
         """
         Parameters
@@ -39,16 +38,28 @@ class DataAcquisitionMessage(DataTransmissionObject):
         None.
 
         """
-        self.odt_number = odt_number
-        self.daq_data = daq_data
+        data = bytearray(MAX_DLC)
+        data[DTO_PID_BYTE] = odt_number
         super().__init__(
             arbitration_id=arbitration_id,
             pid=odt_number,
-            dto_data=list(daq_data),
-            timestamp=timestamp,
-            channel=channel,
-            is_extended_id=is_extended_id,
+            data=data,
         )
+
+    @property
+    def odt_number(self):
+        return self.pid
+
+    @odt_number.setter
+    def odt_number(self, value):
+        self.pid = value
+
+    @classmethod
+    def from_can_message(cls, msg: can.Message):
+        daq = super().from_can_message(msg)
+        daq.odt_number = msg.data[DTO_PID_BYTE]
+
+        return daq
 
     def __repr__(self) -> str:
         args = [
@@ -65,7 +76,7 @@ class DataAcquisitionMessage(DataTransmissionObject):
         field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
         field_strings.append("DAQ")
         field_strings.append(str(self.odt_number))
-        field_strings.append(str(list(self.daq_data)))
+        field_strings.append(str(list(self.data[1:])))
 
         return "  ".join(field_strings).strip()
 

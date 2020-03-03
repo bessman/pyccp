@@ -1,18 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from typing import Union
 
-import can
-import enum
-from typing import List, Union
-
-
-class DTOType(enum.IntEnum):
-    COMMAND_RETURN_MESSAGE = 0xFF
-    EVENT_MESSAGE = 0xFE
+from .ccp_message import CCPMessage
+from . import DTOType
 
 
-class DataTransmissionObject(can.Message):
+class DataTransmissionObject(CCPMessage):
     """
     Data Transmission Objects (DTO) are sent from the slave to the master, and
     are one of three types:
@@ -23,15 +18,13 @@ class DataTransmissionObject(can.Message):
     This class should not be used directly; it is just a superclass for
     CRM, EVM, and DAQ classes.
     """
+    __slots__ = ("pid",)
 
     def __init__(
         self,
         arbitration_id: int,
         pid: Union[DTOType, int],
-        dto_data: Union[List[int], bytearray] = [],
-        timestamp: float = 0,
-        channel: Union[int, str] = None,
-        is_extended_id: bool = True,
+        data: bytearray,
     ):
         """
         Parameters
@@ -40,7 +33,7 @@ class DataTransmissionObject(can.Message):
             0xFF for CRM,
             0xFE for EVM,
             0-0xFD for DAQ.
-        dto_data : list of int or bytearray, optional
+        data : list of int or bytearray, optional
             Transmitted data. The default is [].
 
         Returns
@@ -49,11 +42,7 @@ class DataTransmissionObject(can.Message):
 
         """
         self.pid = pid
-        data = [pid] + dto_data
+        data = data
         super().__init__(
-            arbitration_id=arbitration_id,
-            data=data,
-            timestamp=timestamp,
-            channel=channel,
-            is_extended_id=is_extended_id,
+            arbitration_id=arbitration_id, data=data
         )
