@@ -1,9 +1,5 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Feb 28 11:39:03 2020
-
-@author: abemtk
-"""
 
 import can
 import cantools

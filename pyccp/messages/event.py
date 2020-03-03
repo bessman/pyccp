@@ -1,9 +1,6 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Feb 28 11:53:01 2020
 
-@author: abemtk
-"""
 
 from typing import Union
 

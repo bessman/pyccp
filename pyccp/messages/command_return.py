@@ -1,9 +1,6 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Feb 28 11:48:04 2020
 
-@author: abemtk
-"""
 
 import enum
 from typing import List, Union

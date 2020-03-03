@@ -1,9 +1,6 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Feb 28 11:43:48 2020
 
-@author: abemtk
-"""
 
 import can
 import enum
