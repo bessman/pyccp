@@ -33,9 +33,13 @@ class TestListeners(unittest.TestCase):
     def tearDown(self):
         self.notifier.stop()
 
+    def send_and_receive(self, msg, bus, receive_func):
+        bus.send(msg)
+        return receive_func()
+
     def testReceiveCRM(self):
         crm = CommandReturnMessage(
-            arbitration_id=self.dto_id, return_code=ReturnCodes.ACKNOWLEDGE,
+            arbitration_id=self.dto_id, ctr=0x27, return_code=ReturnCodes.ACKNOWLEDGE,
         )
         self.slave_bus.send(crm)
         msg = self.sorter.get_command_return_message()
@@ -62,6 +66,7 @@ class TestListeners(unittest.TestCase):
     def testReceiveCRO(self):
         cro = CommandReceiveObject(
             arbitration_id=self.cro_id,
+            ctr=0x27,
             command_code=CommandCodes.CONNECT,
             station_address=0x39,
         )

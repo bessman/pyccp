@@ -91,13 +91,13 @@ class Master:
 
         if crm.ctr == self.ctr:
             self.ctr = (self.ctr + 1) % 0x100
-
-            if crm.return_code == ReturnCodes.ACKNOWLEDGE:
-                return crm.data[3:]
-            else:
-                raise CcpError(ReturnCodes(crm.return_code).name)
         else:
             raise CcpError("Counter mismatch")
+
+        if crm.return_code == ReturnCodes.ACKNOWLEDGE:
+            return crm.data[3:]
+        else:
+            raise CcpError(ReturnCodes(crm.return_code).name)
 
     def stop(self):
         self._notifier.stop()
