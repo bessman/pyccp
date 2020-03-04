@@ -13,13 +13,14 @@ class CommandReturnMessage(DataTransmissionObject):
     Command Return Messages (CRM) are a type of Data Transmission Object which
     is sent from a slave to the master in response to a Command Receive Object.
     """
-    __slots__ = ("return_code", "ctr",)
+
+    __slots__ = (
+        "return_code",
+        "ctr",
+    )
 
     def __init__(
-        self,
-        arbitration_id: int = 0,
-        return_code: ReturnCodes = 0,
-        ctr: int = 0,
+        self, arbitration_id: int = 0, return_code: ReturnCodes = 0, ctr: int = 0,
     ):
         """
         Parameters

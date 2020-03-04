@@ -19,9 +19,7 @@ class DataAcquisitionMessage(DataTransmissionObject):
     """
 
     def __init__(
-        self,
-        arbitration_id: int = 0,
-        odt_number: int = 0,
+        self, arbitration_id: int = 0, odt_number: int = 0,
     ):
         """
         Parameters
@@ -41,9 +39,7 @@ class DataAcquisitionMessage(DataTransmissionObject):
         data = bytearray(MAX_DLC)
         data[DTO_PID_BYTE] = odt_number
         super().__init__(
-            arbitration_id=arbitration_id,
-            pid=odt_number,
-            data=data,
+            arbitration_id=arbitration_id, pid=odt_number, data=data,
         )
 
     @property

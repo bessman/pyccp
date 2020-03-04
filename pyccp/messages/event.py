@@ -13,12 +13,11 @@ class EventMessage(DataTransmissionObject):
     Event Messages (EVM) are a type of Data Transmission Object which is sent
     from a slave to the master in response to an internal event in the slave.
     """
+
     __slot__ = ("return_code",)
 
     def __init__(
-        self,
-        arbitration_id: int = 0,
-        return_code: ReturnCodes = 0,
+        self, arbitration_id: int = 0, return_code: ReturnCodes = 0,
     ):
         """
         Parameters
@@ -36,9 +35,7 @@ class EventMessage(DataTransmissionObject):
         data[DTO_PID_BYTE] = DTOType.EVENT_MESSAGE
         data[DTO_ERR_BYTE] = return_code
         super().__init__(
-            arbitration_id=arbitration_id,
-            pid=DTOType.EVENT_MESSAGE,
-            data=data,
+            arbitration_id=arbitration_id, pid=DTOType.EVENT_MESSAGE, data=data,
         )
 
     @classmethod

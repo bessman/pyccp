@@ -14,7 +14,11 @@ class CommandReceiveObject(CCPMessage):
     Command Receive Objects (CRO) are sent from the master to the slave and
     contain commands and associated data which the slave must handle.
     """
-    __slots__ = ("command_code", "ctr",)
+
+    __slots__ = (
+        "command_code",
+        "ctr",
+    )
 
     def __init__(
         self,

@@ -18,13 +18,11 @@ class DataTransmissionObject(CCPMessage):
     This class should not be used directly; it is just a superclass for
     CRM, EVM, and DAQ classes.
     """
+
     __slots__ = ("pid",)
 
     def __init__(
-        self,
-        arbitration_id: int,
-        pid: Union[DTOType, int],
-        data: bytearray,
+        self, arbitration_id: int, pid: Union[DTOType, int], data: bytearray,
     ):
         """
         Parameters
@@ -43,6 +41,4 @@ class DataTransmissionObject(CCPMessage):
         """
         self.pid = pid
         data = data
-        super().__init__(
-            arbitration_id=arbitration_id, data=data
-        )
+        super().__init__(arbitration_id=arbitration_id, data=data)
