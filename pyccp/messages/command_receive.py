@@ -4,9 +4,8 @@
 import can
 from typing import Dict
 
-from .. import MAX_DLC, CRO_CMD_BYTE, CRO_CTR_BYTE
 from .ccp_message import CCPMessage
-from . import CommandCodes, COMMAND_DISPATCH
+from . import CommandCodes, COMMAND_DISPATCH, MAX_DLC, MessageByte
 
 
 class CommandReceiveObject(CCPMessage):
@@ -49,16 +48,16 @@ class CommandReceiveObject(CCPMessage):
             data = self.encode(**kwargs)
         else:
             data = bytearray(MAX_DLC)
-            data[CRO_CMD_BYTE] = 0
-            data[CRO_CTR_BYTE] = ctr
+            data[MessageByte.CRO_CMD] = 0
+            data[MessageByte.CRO_CTR] = ctr
 
         super().__init__(arbitration_id=arbitration_id, data=data)
 
     @classmethod
     def from_can_message(cls, msg: can.Message):
         cro = super().from_can_message(msg)
-        cro.command_code = msg.data[CRO_CMD_BYTE]
-        cro.ctr = msg.data[CRO_CTR_BYTE]
+        cro.command_code = msg.data[MessageByte.CRO_CMD]
+        cro.ctr = msg.data[MessageByte.CRO_CTR]
 
         return cro
 

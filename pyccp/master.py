@@ -26,9 +26,9 @@ __copyright__ = """
 import can
 import logging
 
-from .ccp import CcpError
-from .messages.command_receive import CommandReceiveObject
+from . import CcpError
 from .messages import CommandCodes, ReturnCodes
+from .messages.command_receive import CommandReceiveObject
 from .listeners.message_sorter import MessageSorter
 
 

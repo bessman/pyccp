@@ -7,7 +7,7 @@ import enum
 import decimal
 from typing import List, Union
 
-from .. import MAX_DLC, DTO_PID_BYTE
+from . import MAX_DLC, MessageByte
 from .data_transmission import DataTransmissionObject
 
 
@@ -37,7 +37,7 @@ class DataAcquisitionMessage(DataTransmissionObject):
 
         """
         data = bytearray(MAX_DLC)
-        data[DTO_PID_BYTE] = odt_number
+        data[MessageByte.DTO_PID] = odt_number
         super().__init__(
             arbitration_id=arbitration_id, pid=odt_number, data=data,
         )
@@ -53,7 +53,7 @@ class DataAcquisitionMessage(DataTransmissionObject):
     @classmethod
     def from_can_message(cls, msg: can.Message):
         daq = super().from_can_message(msg)
-        daq.odt_number = msg.data[DTO_PID_BYTE]
+        daq.odt_number = msg.data[MessageByte.DTO_PID]
 
         return daq
 

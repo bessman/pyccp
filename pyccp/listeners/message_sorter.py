@@ -4,10 +4,8 @@
 import can
 import queue
 import logging
-from typing import List, Union
 
-from .. import CRM_CTR_BYTE, DTO_ERR_BYTE
-from ..messages import ReturnCodes
+from ..messages import MessageByte, ReturnCodes
 from ..messages.command_receive import CommandReceiveObject
 from ..messages.command_return import CommandReturnMessage
 from ..messages.event import EventMessage
@@ -30,26 +28,29 @@ class MessageSorter(can.Listener):
         self._daq_queue = queue.Queue()
         self._cro_queue = queue.Queue()
 
+    def hexlist(self, data: bytearray) -> str:
+        return " ".join([format(b, "x") for b in data])
+
     def on_message_received(self, msg: can.Message):
         if is_crm(msg=msg, dto_id=self.dto_id):
             msg = CommandReturnMessage.from_can_message(msg)
             self._crm_queue.put(msg)
-            ctr = msg.data[CRM_CTR_BYTE]
-            return_code = ReturnCodes(msg.data[DTO_ERR_BYTE]).name
-            data = " ".join([format(b, "x") for b in msg.data[3:]])
-            logger.debug("Received CRM %s:  %s  %s", ctr, return_code, data)
+            ctr = msg.data[MessageByte.CRM_CTR]
+            return_code = ReturnCodes(msg.data[MessageByte.DTO_ERR]).name
+            data = self.hexlist(msg.data[3:])
+            logger.debug("Received CRM {}:  %s  %s".format(ctr), return_code, data)
 
         elif is_evm(msg=msg, dto_id=self.dto_id):
             msg = EventMessage.from_can_message(msg)
             self._evm_queue.put(msg)
-            return_code = ReturnCodes(msg.data[DTO_ERR_BYTE]).name
+            return_code = ReturnCodes(msg.data[MessageByte.DTO_ERR]).name
             logger.debug("Received EVM:  %s", return_code)
 
         elif is_daq(msg=msg, dto_id=self.dto_id):
             msg = DataAcquisitionMessage().from_can_message(msg)
             self._daq_queue.put(msg)
-            odt_number = msg.data[0]
-            data = " ".join([format(b, "x") for b in msg.data[1:]])
+            odt_number = msg.data[MessageByte.DTO_PID]
+            data = self.hexlist(msg.data[1:])
             logger.debug("Received DAQ:  %s  %s", odt_number, data)
 
         elif is_cro(msg=msg, cro_id=self.cro_id):

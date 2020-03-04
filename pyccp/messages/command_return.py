@@ -3,8 +3,7 @@
 
 import can
 
-from .. import MAX_DLC, DTO_ERR_BYTE, DTO_PID_BYTE, CRM_CTR_BYTE
-from . import DTOType, ReturnCodes
+from . import DTOType, MAX_DLC, MessageByte, ReturnCodes
 from .data_transmission import DataTransmissionObject
 
 
@@ -38,9 +37,9 @@ class CommandReturnMessage(DataTransmissionObject):
         self.return_code = return_code
         self.ctr = ctr
         data = bytearray(MAX_DLC)
-        data[DTO_PID_BYTE] = DTOType.COMMAND_RETURN_MESSAGE
-        data[DTO_ERR_BYTE] = ReturnCodes.ACKNOWLEDGE
-        data[CRM_CTR_BYTE] = ctr
+        data[MessageByte.DTO_PID] = DTOType.COMMAND_RETURN_MESSAGE
+        data[MessageByte.DTO_ERR] = ReturnCodes.ACKNOWLEDGE
+        data[MessageByte.CRM_CTR] = ctr
         super().__init__(
             arbitration_id=arbitration_id,
             pid=DTOType.COMMAND_RETURN_MESSAGE,
@@ -51,8 +50,8 @@ class CommandReturnMessage(DataTransmissionObject):
     def from_can_message(cls, msg: can.Message):
         crm = super().from_can_message(msg)
         crm.pid = DTOType.COMMAND_RETURN_MESSAGE
-        crm.ctr = msg.data[CRM_CTR_BYTE]
-        crm.return_code = msg.data[DTO_ERR_BYTE]
+        crm.ctr = msg.data[MessageByte.CRM_CTR]
+        crm.return_code = msg.data[MessageByte.DTO_ERR]
 
         return crm
 

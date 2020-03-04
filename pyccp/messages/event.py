@@ -3,8 +3,7 @@
 
 import can
 
-from .. import MAX_DLC, DTO_ERR_BYTE, DTO_PID_BYTE
-from . import DTOType, ReturnCodes
+from . import DTOType, MAX_DLC, MessageByte, ReturnCodes
 from .data_transmission import DataTransmissionObject
 
 
@@ -32,8 +31,8 @@ class EventMessage(DataTransmissionObject):
         """
         self.return_code = return_code
         data = bytearray(MAX_DLC)
-        data[DTO_PID_BYTE] = DTOType.EVENT_MESSAGE
-        data[DTO_ERR_BYTE] = return_code
+        data[MessageByte.DTO_PID] = DTOType.EVENT_MESSAGE
+        data[MessageByte.DTO_ERR] = return_code
         super().__init__(
             arbitration_id=arbitration_id, pid=DTOType.EVENT_MESSAGE, data=data,
         )
@@ -42,7 +41,7 @@ class EventMessage(DataTransmissionObject):
     def from_can_message(cls, msg: can.Message):
         evm = super().from_can_message(msg)
         evm.pid = DTOType.EVENT_MESSAGE
-        evm.return_code = msg.data[DTO_ERR_BYTE]
+        evm.return_code = msg.data[MessageByte.DTO_ERR]
 
         return evm
 

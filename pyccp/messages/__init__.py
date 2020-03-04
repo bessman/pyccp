@@ -2,6 +2,17 @@ import enum
 import cantools
 
 
+MAX_DLC = 8
+
+
+class MessageByte(enum.IntEnum):
+    CRO_CMD = 0
+    CRO_CTR = 1
+    DTO_PID = 0
+    DTO_ERR = 1
+    CRM_CTR = 2
+
+
 class CommandCodes(enum.IntEnum):
     # Mandatory commands
     CONNECT = 0x01
