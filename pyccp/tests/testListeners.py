@@ -33,10 +33,6 @@ class TestListeners(unittest.TestCase):
     def tearDown(self):
         self.notifier.stop()
 
-    def send_and_receive(self, msg, bus, receive_func):
-        bus.send(msg)
-        return receive_func()
-
     def testReceiveCRM(self):
         crm = CommandReturnMessage(
             arbitration_id=self.dto_id, ctr=0x27, return_code=ReturnCodes.ACKNOWLEDGE,
@@ -81,3 +77,7 @@ class TestListeners(unittest.TestCase):
         self.slave_bus.send(daq)
         _, value = self.parser.get("testSignal")
         self.assertEqual(value, 0x10203)
+
+
+if __name__ == "__main__":
+    unittest.main()
