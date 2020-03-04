@@ -19,7 +19,10 @@ class CommandReturnMessage(DataTransmissionObject):
     )
 
     def __init__(
-        self, arbitration_id: int = 0, return_code: ReturnCodes = 0, ctr: int = 0,
+        self,
+        arbitration_id: int = 0,
+        return_code: ReturnCodes = ReturnCodes.ACKNOWLEDGE,
+        ctr: int = 0,
     ):
         """
         Parameters
@@ -38,7 +41,7 @@ class CommandReturnMessage(DataTransmissionObject):
         self.ctr = ctr
         data = bytearray(MAX_DLC)
         data[MessageByte.DTO_PID] = DTOType.COMMAND_RETURN_MESSAGE
-        data[MessageByte.DTO_ERR] = ReturnCodes.ACKNOWLEDGE
+        data[MessageByte.DTO_ERR] = return_code
         data[MessageByte.CRM_CTR] = ctr
         super().__init__(
             arbitration_id=arbitration_id,
@@ -62,7 +65,7 @@ class CommandReturnMessage(DataTransmissionObject):
             "counter={:#x}".format(self.ctr),
         ]
 
-        crm_data = ["{:#02x}".format(byte) for byte in self.crm_data]
+        crm_data = ["{:#02x}".format(byte) for byte in self.data[3:]]
         args += ["crm_data=[{}]".format(", ".join(crm_data))]
 
         return "ccp.CommandReturnMessage({})".format(", ".join(args))

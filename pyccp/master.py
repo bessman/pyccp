@@ -25,6 +25,7 @@ __copyright__ = """
 
 import can
 import logging
+from queue import Empty
 
 from . import CcpError
 from .messages import CommandCodes, ReturnCodes
@@ -83,7 +84,11 @@ class Master:
             Five data bytes.
         """
 
-        crm = self._queue.get_command_return_message()
+        try:
+            crm = self._queue.get_command_return_message()
+        except Empty:
+            raise CcpError("No reply from slave")
+
         if crm.ctr == self.ctr:
             self.ctr = (self.ctr + 1) % 0x100
 
