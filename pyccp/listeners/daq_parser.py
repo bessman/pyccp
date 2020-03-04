@@ -3,21 +3,21 @@
 
 import can
 import queue
+import logging
 from typing import List
 
 from ..messages.data_acquisition import ObjectDescriptorTable
 from ..messages.ccp_message import is_daq
 
 
+logger = logging.getLogger(__name__)
+
+
 class DAQParser(can.Listener):
     def __init__(
-        self,
-        dto_id: int,
-        odts: List[ObjectDescriptorTable] = [],
-        verbose: bool = False,
+        self, dto_id: int, odts: List[ObjectDescriptorTable] = [],
     ):
         self.dto_id = dto_id
-        self._verbose = verbose
         # Flatten DAQ lists to dict of ODTs
         # self.odt_dict is used for decoding incoming data
         self.odt_dict = {}
@@ -40,14 +40,11 @@ class DAQParser(can.Listener):
         if is_daq(msg=msg, dto_id=self.dto_id):
             odt_number = msg.data[0]
             element_values = self.odt_dict[odt_number].decode(msg.data[1:])
-            output = []
+            logger.debug("Parsed ODT#{0}:".format(odt_number))
 
             for k, v in element_values.items():
                 self.values_dict[k].put((msg.timestamp, v))
-                output.append(k + ": " + str(v))
-
-            if self._verbose:
-                print("\n".join(output))
+                logger.info("%s: {}".format(v), k)
 
     def get(self, element_name: str):
         return self.values_dict[element_name].get(timeout=0.5)

@@ -24,6 +24,7 @@ __copyright__ = """
 """
 
 import can
+import logging
 
 from .ccp import CcpError
 from .messages.command_receive import CommandReceiveObject
@@ -31,9 +32,12 @@ from .messages import CommandCodes, ReturnCodes
 from .listeners.message_sorter import MessageSorter
 
 
+logger = logging.getLogger(__name__)
+
+
 class Master:
     def __init__(
-        self, transport: can.Bus, cro_id: int, dto_id: int, verbose: bool = False
+        self, transport: can.Bus, cro_id: int, dto_id: int,
     ):
         self.slaveConnections = {}
         self.cro_id = cro_id
@@ -46,7 +50,7 @@ class Master:
                 {"can_id": cro_id, "can_mask": 0x1FFFFFFF, "extended": True},
             ]
         )
-        self._queue = MessageSorter(dto_id, cro_id, verbose=verbose)
+        self._queue = MessageSorter(dto_id, cro_id)
         self._notifier = can.Notifier(self._transport, [self._queue])
         self.ctr = 0x00
 
@@ -58,6 +62,10 @@ class Master:
             **kwargs
         )
         self._transport.send(cro)
+        kwargs_str = "  ".join([k.upper() + ": " + hex(v) for k, v in kwargs.items()])
+        logger.debug(
+            "Sent CRO %s:  %s  %s", str(self.ctr), command_code.name, kwargs_str
+        )
 
     def _receive(self) -> bytearray:
         """
