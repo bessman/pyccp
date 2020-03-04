@@ -70,15 +70,3 @@ class CommandReceiveObject(CCPMessage):
 
     def decode(self) -> Dict[str, int]:
         return COMMAND_DISPATCH[self.command_code].decode(self.data)
-
-    def __str__(self) -> str:
-        field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
-        field_strings.append("CRO")
-        field_strings.append(str(self.ctr))
-        field_strings.append(CommandCodes(self.command_code).name)
-
-        for k, v in self.decode().items():
-            if not (k == "command_code"):
-                field_strings.extend([k, hex(v)])
-
-        return "  ".join(field_strings).strip()

@@ -57,24 +57,3 @@ class CommandReturnMessage(DataTransmissionObject):
         crm.return_code = msg.data[MessageByte.DTO_ERR]
 
         return crm
-
-    def __repr__(self) -> str:
-        args = [
-            "timestamp={}".format(self.timestamp),
-            "return_code={:#x}".format(self.return_code),
-            "counter={:#x}".format(self.ctr),
-        ]
-
-        crm_data = ["{:#02x}".format(byte) for byte in self.data[3:]]
-        args += ["crm_data=[{}]".format(", ".join(crm_data))]
-
-        return "ccp.CommandReturnMessage({})".format(", ".join(args))
-
-    def __str__(self) -> str:
-        field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
-        field_strings.append("CRM")
-        field_strings.append(ReturnCodes(self.return_code).name)
-        field_strings.append(str(self.ctr))
-        field_strings.append(str(list(self.data[3:])))
-
-        return "  ".join(field_strings).strip()

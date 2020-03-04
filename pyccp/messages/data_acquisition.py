@@ -57,25 +57,6 @@ class DataAcquisitionMessage(DataTransmissionObject):
 
         return daq
 
-    def __repr__(self) -> str:
-        args = [
-            "timestamp={}".format(self.timestamp),
-            "odt_number={:#x}".format(self.odt_number),
-        ]
-
-        daq_data = ["{:#02x}".format(byte) for byte in self.daq_data]
-        args += ["daq_data=[{}]".format(", ".join(daq_data))]
-
-        return "ccp.DataAcquisitionMessage({})".format(", ".join(args))
-
-    def __str__(self) -> str:
-        field_strings = ["Timestamp: {0:>8.6f}".format(self.timestamp)]
-        field_strings.append("DAQ")
-        field_strings.append(str(self.odt_number))
-        field_strings.append(str(list(self.data[1:])))
-
-        return "  ".join(field_strings).strip()
-
 
 class Element(cantools.database.Signal):
     """
