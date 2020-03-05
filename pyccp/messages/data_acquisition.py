@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import can
 import cantools
 import enum
 import decimal
 from typing import List, Union
 
-from . import MAX_DLC, MessageByte
+from . import MAX_DLC
 from .data_transmission import DataTransmissionObject
 
 
@@ -19,7 +18,10 @@ class DataAcquisitionMessage(DataTransmissionObject):
     """
 
     def __init__(
-        self, arbitration_id: int = 0, odt_number: int = 0,
+        self,
+        arbitration_id: int = 0,
+        odt_number: int = 0,
+        data: bytearray = bytearray(MAX_DLC),
     ):
         """
         Parameters
@@ -36,26 +38,17 @@ class DataAcquisitionMessage(DataTransmissionObject):
         None.
 
         """
-        data = bytearray(MAX_DLC)
-        data[MessageByte.DTO_PID] = odt_number
         super().__init__(
             arbitration_id=arbitration_id, pid=odt_number, data=data,
         )
 
     @property
-    def odt_number(self):
+    def odt_number(self) -> int:
         return self.pid
 
     @odt_number.setter
-    def odt_number(self, value):
+    def odt_number(self, value: int):
         self.pid = value
-
-    @classmethod
-    def from_can_message(cls, msg: can.Message):
-        daq = super().from_can_message(msg)
-        daq.odt_number = msg.data[MessageByte.DTO_PID]
-
-        return daq
 
 
 class Element(cantools.database.Signal):

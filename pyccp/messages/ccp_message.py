@@ -51,7 +51,7 @@ class CCPMessage(can.Message):
         check_msg_type(msg)
         ccpmsg = cls()
 
-        for s in msg.__slots__:
+        for s in can.Message.__slots__:
             if not s[:2] == "__":
                 super().__setattr__(ccpmsg, s, msg.__getattribute__(s))
 

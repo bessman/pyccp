@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import can
-
 from . import DTOType, MAX_DLC, MessageByte, ReturnCodes
 from .data_transmission import DataTransmissionObject
 
@@ -13,10 +11,10 @@ class EventMessage(DataTransmissionObject):
     from a slave to the master in response to an internal event in the slave.
     """
 
-    __slot__ = ("return_code",)
-
     def __init__(
-        self, arbitration_id: int = 0, return_code: ReturnCodes = 0,
+        self,
+        arbitration_id: int = 0,
+        return_code: ReturnCodes = ReturnCodes.RESOURCE_FUNCTION_NOT_AVAILABLE,
     ):
         """
         Parameters
@@ -29,18 +27,16 @@ class EventMessage(DataTransmissionObject):
         None.
 
         """
+        self.data = bytearray(MAX_DLC)
         self.return_code = return_code
-        data = bytearray(MAX_DLC)
-        data[MessageByte.DTO_PID] = DTOType.EVENT_MESSAGE
-        data[MessageByte.DTO_ERR] = return_code
         super().__init__(
-            arbitration_id=arbitration_id, pid=DTOType.EVENT_MESSAGE, data=data,
+            arbitration_id=arbitration_id, pid=DTOType.EVENT_MESSAGE, data=self.data,
         )
 
-    @classmethod
-    def from_can_message(cls, msg: can.Message):
-        evm = super().from_can_message(msg)
-        evm.pid = DTOType.EVENT_MESSAGE
-        evm.return_code = msg.data[MessageByte.DTO_ERR]
+    @property
+    def return_code(self) -> ReturnCodes:
+        return ReturnCodes(self.data[MessageByte.DTO_ERR])
 
-        return evm
+    @return_code.setter
+    def return_code(self, value: ReturnCodes):
+        self.data[MessageByte.DTO_ERR] = value

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import can
-
 from . import DTOType, MAX_DLC, MessageByte, ReturnCodes
 from .data_transmission import DataTransmissionObject
 
@@ -13,22 +11,18 @@ class CommandReturnMessage(DataTransmissionObject):
     is sent from a slave to the master in response to a Command Receive Object.
     """
 
-    __slots__ = (
-        "return_code",
-        "ctr",
-    )
-
     def __init__(
         self,
         arbitration_id: int = 0,
-        return_code: ReturnCodes = ReturnCodes.ACKNOWLEDGE,
+        return_code: ReturnCodes = ReturnCodes.RESOURCE_FUNCTION_NOT_AVAILABLE,
         ctr: int = 0,
+        data: bytearray = bytearray(MAX_DLC),
     ):
         """
         Parameters
         ----------
         return_code : ReturnCodes
-            The command to send to the slave.
+            Status information about command execution.
         ctr : int
             Command counter, 0-255. Used to associate CROs with CRMs.
 
@@ -37,23 +31,27 @@ class CommandReturnMessage(DataTransmissionObject):
         None.
 
         """
+        self.data = data
         self.return_code = return_code
         self.ctr = ctr
-        data = bytearray(MAX_DLC)
-        data[MessageByte.DTO_PID] = DTOType.COMMAND_RETURN_MESSAGE
-        data[MessageByte.DTO_ERR] = return_code
-        data[MessageByte.CRM_CTR] = ctr
         super().__init__(
             arbitration_id=arbitration_id,
             pid=DTOType.COMMAND_RETURN_MESSAGE,
-            data=data,
+            data=self.data,
         )
 
-    @classmethod
-    def from_can_message(cls, msg: can.Message):
-        crm = super().from_can_message(msg)
-        crm.pid = DTOType.COMMAND_RETURN_MESSAGE
-        crm.ctr = msg.data[MessageByte.CRM_CTR]
-        crm.return_code = msg.data[MessageByte.DTO_ERR]
+    @property
+    def return_code(self) -> ReturnCodes:
+        return ReturnCodes(self.data[MessageByte.DTO_ERR])
 
-        return crm
+    @return_code.setter
+    def return_code(self, value: ReturnCodes):
+        self.data[MessageByte.DTO_ERR] = value
+
+    @property
+    def ctr(self) -> int:
+        return self.data[MessageByte.CRM_CTR]
+
+    @ctr.setter
+    def ctr(self, value: int):
+        self.data[MessageByte.CRM_CTR] = value

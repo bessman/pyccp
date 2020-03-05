@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import can
 from typing import Dict
 
 from .ccp_message import CCPMessage
@@ -13,11 +12,6 @@ class CommandReceiveObject(CCPMessage):
     Command Receive Objects (CRO) are sent from the master to the slave and
     contain commands and associated data which the slave must handle.
     """
-
-    __slots__ = (
-        "command_code",
-        "ctr",
-    )
 
     def __init__(
         self,
@@ -41,25 +35,14 @@ class CommandReceiveObject(CCPMessage):
         None.
 
         """
+        self.data = bytearray(MAX_DLC)
         self.command_code = command_code
         self.ctr = ctr
 
         if command_code is not None:
-            data = self.encode(**kwargs)
-        else:
-            data = bytearray(MAX_DLC)
-            data[MessageByte.CRO_CMD] = 0
-            data[MessageByte.CRO_CTR] = ctr
+            self.data = self.encode(**kwargs)
 
-        super().__init__(arbitration_id=arbitration_id, data=data)
-
-    @classmethod
-    def from_can_message(cls, msg: can.Message):
-        cro = super().from_can_message(msg)
-        cro.command_code = msg.data[MessageByte.CRO_CMD]
-        cro.ctr = msg.data[MessageByte.CRO_CTR]
-
-        return cro
+        super().__init__(arbitration_id=arbitration_id, data=self.data)
 
     def encode(self, **kwargs: int) -> bytes:
         parameters = kwargs
@@ -70,3 +53,22 @@ class CommandReceiveObject(CCPMessage):
 
     def decode(self) -> Dict[str, int]:
         return COMMAND_DISPATCH[self.command_code].decode(self.data)
+
+    @property
+    def command_code(self) -> CommandCodes:
+        return CommandCodes(self.data[MessageByte.CRO_CMD])
+
+    @command_code.setter
+    def command_code(self, value: CommandCodes):
+        if value is not None:
+            self.data[MessageByte.CRO_CMD] = value
+        else:
+            self.data[MessageByte.CRO_CMD] = 0
+
+    @property
+    def ctr(self) -> int:
+        return self.data[MessageByte.CRO_CTR]
+
+    @ctr.setter
+    def ctr(self, value: int):
+        self.data[MessageByte.CRO_CTR] = value
