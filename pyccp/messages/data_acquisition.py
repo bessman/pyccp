@@ -68,7 +68,6 @@ class Element(cantools.database.Signal):
     def __init__(
         self,
         name: str,
-        start: int,
         size: int,
         address: int,
         extension: int = 0,
@@ -90,10 +89,6 @@ class Element(cantools.database.Signal):
         ----------
         name : str
             Name of the slave internal variable.
-        start : int
-            Starting bit of the variable in the ODT. Meaning is
-            counter-intuitive for big endian data. See
-            cantools.database.can.Signal for details.
         size : int
             Size of the variable in bytes.
         address : int
@@ -110,7 +105,6 @@ class Element(cantools.database.Signal):
         self._extension = extension
         super().__init__(
             name=name,
-            start=start,
             length=size * 8,  # Bytes -> bits
             byte_order=byte_order,
             is_signed=is_signed,
@@ -159,6 +153,19 @@ class Element(cantools.database.Signal):
     def size(self, value):
         self._length = value * 8
 
+    @property
+    def start_byte(self):
+        """Translate from starting bit to starting byte.
+        """
+        return self._start // 8
+
+    @start_byte.setter
+    def start_byte(self, value):
+        """Translate from starting byte to starting bit. See
+        cantools.database.can.Signal for details on the byte order stuff.
+        """
+        self._start = value * 8 - 7 if self.byte_order == "big" else value * 8
+
 
 class ObjectDescriptorTable(cantools.database.Message):
     """
@@ -170,13 +177,7 @@ class ObjectDescriptorTable(cantools.database.Message):
     """
 
     def __init__(
-        self,
-        frame_id: int,
-        length: int,
-        elements: List[Element],
-        number: int,
-        comment: str = None,
-        is_extended_frame: bool = True,
+        self, elements: List[Element], number: int, length: int = 7,
     ):
         """
         Parameters
@@ -185,6 +186,8 @@ class ObjectDescriptorTable(cantools.database.Message):
             List of Element objects which point to slave internal data.
         number : int
             ODT number.
+        length : int, optional
+            Number of bytes in ODT. The default is 7.
 
         Returns
         -------
@@ -194,12 +197,7 @@ class ObjectDescriptorTable(cantools.database.Message):
         self._number = number
         name = str(number)
         super().__init__(
-            frame_id=frame_id,
-            name=name,
-            length=length,
-            signals=elements,
-            comment=comment,
-            is_extended_frame=is_extended_frame,
+            name=name, length=length, signals=elements,
         )
         self._elements = self._signals
 

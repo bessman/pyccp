@@ -17,6 +17,14 @@ class MemoryTransferAddressNumber(enum.IntEnum):
     MTA1_NUMBER = 1
 
 
-class CcpError(can.CanError):
+class SessionStatus(enum.IntEnum):
+    CAL = 0x01
+    DAQ = 0x02
+    RESUME = 0x04
+    STORE = 0x40
+    RUN = 0x80
+
+
+class CCPError(can.CanError):
     """Indicates an error with the CCP communication.
     """

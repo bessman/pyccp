@@ -55,7 +55,7 @@ class Master:
         self._notifier = can.Notifier(self._transport, [self._queue])
         self.ctr = 0x00
 
-    def _send(self, command_code: CommandCodes, **kwargs):
+    def send(self, command_code: CommandCodes, **kwargs):
         cro = CommandReceiveObject(
             arbitration_id=self.cro_id,
             command_code=command_code,
@@ -68,7 +68,7 @@ class Master:
             "Sent CRO %s:  %s  %s", str(self.ctr), command_code.name, kwargs_str
         )
 
-    def _receive(self) -> bytearray:
+    def receive(self) -> bytearray:
         """
         Raises
         ------
