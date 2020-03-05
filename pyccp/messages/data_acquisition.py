@@ -4,7 +4,7 @@
 import cantools
 import enum
 import decimal
-from typing import List, Union
+from typing import Dict, List, Union
 
 from . import MAX_DLC
 from .data_transmission import DataTransmissionObject
@@ -41,6 +41,14 @@ class DataAcquisitionMessage(DataTransmissionObject):
         super().__init__(
             arbitration_id=arbitration_id, pid=odt_number, data=data,
         )
+
+    def decode(self) -> Dict[str, int]:
+        try:
+            return DAQ_DB.get_message_by_name(str(self.odt_number)).decode(
+                self.data[1:]
+            )
+        except KeyError as e:
+            raise KeyError("No ODT with number {}".format(e))
 
     @property
     def odt_number(self) -> int:
@@ -83,8 +91,9 @@ class Element(cantools.database.Signal):
         name : str
             Name of the slave internal variable.
         start : int
-            Starting bit of the variable in the ODT. Little endian, i.e. if the
-            first byte of the ODT is big endian its starting bit is 7.
+            Starting bit of the variable in the ODT. Meaning is
+            counter-intuitive for big endian data. See
+            cantools.database.can.Signal for details.
         size : int
             Size of the variable in bytes.
         address : int
@@ -166,7 +175,6 @@ class ObjectDescriptorTable(cantools.database.Message):
         length: int,
         elements: List[Element],
         number: int,
-        name: str = None,
         comment: str = None,
         is_extended_frame: bool = True,
     ):
@@ -177,9 +185,6 @@ class ObjectDescriptorTable(cantools.database.Message):
             List of Element objects which point to slave internal data.
         number : int
             ODT number.
-        name : str, optional
-            Name of the ODT. If none is provided it will default to the ODT
-            number as a string.
 
         Returns
         -------
@@ -187,10 +192,7 @@ class ObjectDescriptorTable(cantools.database.Message):
 
         """
         self._number = number
-
-        if name is None:
-            name = str(number)
-
+        name = str(number)
         super().__init__(
             frame_id=frame_id,
             name=name,
@@ -200,6 +202,14 @@ class ObjectDescriptorTable(cantools.database.Message):
             is_extended_frame=is_extended_frame,
         )
         self._elements = self._signals
+
+    def register(self):
+        DAQ_DB.messages.append(self)
+        DAQ_DB.refresh()
+
+    def deregister(self):
+        DAQ_DB.messages.remove(self)
+        DAQ_DB.refresh()
 
     @property
     def number(self):
@@ -214,3 +224,6 @@ class ObjectDescriptorTable(cantools.database.Message):
         """
 
         return self._elements
+
+
+DAQ_DB = cantools.database.Database()
