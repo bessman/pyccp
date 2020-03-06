@@ -118,7 +118,7 @@ class TestMaster(unittest.TestCase):
             CommandCodes.WRITE_DAQ,
             "000007E1  16 27 02 01 02 00 42 00",
             self.acknowledge,
-            element_size=2,
+            size=2,
             extension=0x01,
             address=0x02004200,
         )

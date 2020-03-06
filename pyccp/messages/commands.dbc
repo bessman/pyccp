@@ -86,7 +86,7 @@ BO_ 7 set_daq_ptr: 8 Vector__XXX
 BO_ 8 write_daq: 8 Vector__XXX
  SG_ address : 39|32@0+ (1,0) [0|0] "" Vector__XXX
  SG_ extension : 24|8@1+ (1,0) [0|0] "" Vector__XXX
- SG_ element_size : 16|8@1+ (1,0) [0|0] "" Vector__XXX
+ SG_ size : 16|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 8|8@1+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 0|8@1+ (1,0) [0|0] "" Vector__XXX
 
