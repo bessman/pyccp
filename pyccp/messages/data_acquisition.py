@@ -105,6 +105,7 @@ class Element(cantools.database.Signal):
         self._extension = extension
         super().__init__(
             name=name,
+            start=0,
             length=size * 8,  # Bytes -> bits
             byte_order=byte_order,
             is_signed=is_signed,
@@ -164,7 +165,7 @@ class Element(cantools.database.Signal):
         """Translate from starting byte to starting bit. See
         cantools.database.can.Signal for details on the byte order stuff.
         """
-        self._start = value * 8 - 7 if self.byte_order == "big" else value * 8
+        self._start = value * 8 + 7 if self.byte_order == "big_endian" else value * 8
 
 
 class ObjectDescriptorTable(cantools.database.Message):
@@ -195,11 +196,26 @@ class ObjectDescriptorTable(cantools.database.Message):
 
         """
         self._number = number
+        self.elements = elements
+        self._assign_element_numbers()
+        self._get_frame_id()
         name = str(number)
         super().__init__(
-            name=name, length=length, signals=elements,
+            frame_id=self.frame_id, name=name, length=length, signals=self.elements,
         )
-        self._elements = self._signals
+
+    def _get_frame_id(self):
+        if len(DAQ_DB.messages) == 0:
+            self.frame_id = 0
+        else:
+            self.frame_id = max([f.frame_id for f in DAQ_DB.messages]) + 1
+
+    def _assign_element_numbers(self):
+        start_byte = 0
+
+        for e in self.elements:
+            e.start_byte = start_byte
+            start_byte += e.size
 
     def register(self):
         DAQ_DB.messages.append(self)
@@ -221,7 +237,11 @@ class ObjectDescriptorTable(cantools.database.Message):
         """Elements of the ODT.
         """
 
-        return self._elements
+        return self._signals
+
+    @elements.setter
+    def elements(self, value):
+        self._signals = value
 
 
 DAQ_DB = cantools.database.Database()

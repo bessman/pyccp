@@ -4,7 +4,7 @@
 import can
 import unittest
 
-from .. import CcpError
+from .. import CCPError
 from ..master import Master
 from ..messages import CommandCodes, ReturnCodes
 from ..messages.command_return import CommandReturnMessage
@@ -153,7 +153,7 @@ class TestMaster(unittest.TestCase):
         )
 
     def testNoReply(self):
-        self.assertRaises(CcpError, self.master._receive)
+        self.assertRaises(CCPError, self.master._receive)
 
     def testWrongCtr(self):
         msg = CommandReturnMessage(
@@ -162,7 +162,7 @@ class TestMaster(unittest.TestCase):
             ctr=self.master.ctr + 1,
         )
         self.master._queue.on_message_received(msg)
-        self.assertRaises(CcpError, self.master._receive)
+        self.assertRaises(CCPError, self.master._receive)
 
     def testSlaveError(self):
         msg = CommandReturnMessage(
@@ -171,7 +171,7 @@ class TestMaster(unittest.TestCase):
             ctr=self.master.ctr,
         )
         self.master._queue.on_message_received(msg)
-        self.assertRaises(CcpError, self.master._receive)
+        self.assertRaises(CCPError, self.master._receive)
 
 
 if __name__ == "__main__":

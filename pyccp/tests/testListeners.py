@@ -23,10 +23,8 @@ class TestListeners(unittest.TestCase):
         self.master_bus = can.Bus("test", bustype="virtual", receive_own_messages=True)
         self.slave_bus = can.Bus("test", bustype="virtual")
         self.sorter = MessageSorter(self.dto_id, self.cro_id)
-        test_signal = Element(name="testSignal", start=7, size=4, address=0xDEADBEEF,)
-        self.test_odt = ObjectDescriptorTable(
-            self.dto_id, length=7, elements=[test_signal], number=2
-        )
+        test_signal = Element(name="testSignal", size=4, address=0xDEADBEEF,)
+        self.test_odt = ObjectDescriptorTable(elements=[test_signal], number=2)
         self.test_odt.register()
         self.notifier = can.Notifier(self.master_bus, [self.sorter])
 
