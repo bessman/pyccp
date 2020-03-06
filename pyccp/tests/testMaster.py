@@ -28,13 +28,12 @@ class TestMaster(unittest.TestCase):
         del self.master
 
     def runTest(
-        self, command_code, expected_result, reply, **kwargs,
+        self, command, expected_result, reply, **kwargs,
     ):
-        self.master._send(command_code, **kwargs)
+        self.master._queue.on_message_received(reply)
+        command(**kwargs)
         message = self.slave_bus.recv(timeout=1)
         addr_fmt = "08X" if message.is_extended_id else "04X"
-        self.master._queue.on_message_received(reply)
-        self.master._receive()
         result = (
             f"{message.arbitration_id:{addr_fmt}}"
             + "  "
@@ -44,7 +43,7 @@ class TestMaster(unittest.TestCase):
 
     def testConnect(self):
         self.runTest(
-            CommandCodes.CONNECT,
+            self.master.connect,
             "000007E1  01 27 39 00 00 00 00 00",
             self.acknowledge,
             station_address=0x39,
@@ -52,7 +51,7 @@ class TestMaster(unittest.TestCase):
 
     def testGetCCPVersion(self):
         self.runTest(
-            CommandCodes.GET_CCP_VERSION,
+            self.master.get_ccp_version,
             "000007E1  1B 27 02 01 00 00 00 00",
             self.acknowledge,
             major=2,
@@ -61,7 +60,7 @@ class TestMaster(unittest.TestCase):
 
     def testExchangeID(self):
         self.runTest(
-            CommandCodes.EXCHANGE_ID,
+            self.master.exchange_id,
             "000007E1  17 27 00 00 00 00 00 00",
             self.acknowledge,
             device_info=0,
@@ -69,7 +68,7 @@ class TestMaster(unittest.TestCase):
 
     def testSetMta(self):
         self.runTest(
-            CommandCodes.SET_MTA,
+            self.master.set_mta,
             "000007E1  02 27 00 02 34 00 20 00",
             self.acknowledge,
             address=0x34002000,
@@ -79,7 +78,7 @@ class TestMaster(unittest.TestCase):
 
     def testDnload(self):
         self.runTest(
-            CommandCodes.DNLOAD,
+            self.master.dnload,
             "000007E1  03 27 05 10 11 12 13 14",
             self.acknowledge,
             size=5,
@@ -88,7 +87,7 @@ class TestMaster(unittest.TestCase):
 
     def testUpload(self):
         self.runTest(
-            CommandCodes.UPLOAD,
+            self.master.upload,
             "000007E1  04 27 04 00 00 00 00 00",
             self.acknowledge,
             size=4,
@@ -96,7 +95,7 @@ class TestMaster(unittest.TestCase):
 
     def testGetDaqSize(self):
         self.runTest(
-            CommandCodes.GET_DAQ_SIZE,
+            self.master.get_daq_size,
             "000007E1  14 27 03 00 01 02 03 04",
             self.acknowledge,
             daq_list_number=3,
@@ -105,7 +104,7 @@ class TestMaster(unittest.TestCase):
 
     def testSetDaqPtr(self):
         self.runTest(
-            CommandCodes.SET_DAQ_PTR,
+            self.master.set_daq_ptr,
             "000007E1  15 27 03 05 02 00 00 00",
             self.acknowledge,
             daq_list_number=3,
@@ -115,7 +114,7 @@ class TestMaster(unittest.TestCase):
 
     def testWriteDaqPtr(self):
         self.runTest(
-            CommandCodes.WRITE_DAQ,
+            self.master.write_daq,
             "000007E1  16 27 02 01 02 00 42 00",
             self.acknowledge,
             size=2,
@@ -125,7 +124,7 @@ class TestMaster(unittest.TestCase):
 
     def testStartStopPtr(self):
         self.runTest(
-            CommandCodes.START_STOP,
+            self.master.start_stop,
             "000007E1  06 27 01 03 07 02 00 01",
             self.acknowledge,
             mode=0x01,
@@ -137,7 +136,7 @@ class TestMaster(unittest.TestCase):
 
     def testDisconnect(self):
         self.runTest(
-            CommandCodes.DISCONNECT,
+            self.master.disconnect,
             "000007E1  07 27 00 00 08 02 00 00",
             self.acknowledge,
             permanent=0x00,
@@ -146,7 +145,7 @@ class TestMaster(unittest.TestCase):
 
     def testSetSStatus(self):
         self.runTest(
-            CommandCodes.SET_S_STATUS,
+            self.master.set_s_status,
             "000007E1  0C 27 01 00 00 00 00 00",
             self.acknowledge,
             status_bits=0x01,
@@ -175,4 +174,4 @@ class TestMaster(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main()  # pragma: no cover

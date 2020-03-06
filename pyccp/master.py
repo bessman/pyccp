@@ -142,11 +142,11 @@ class Master:
             major, minor
         """
 
-        self._.send(CommandCodes.GET_CCP_VERSION, major=major, minor=minor)
+        self._send(CommandCodes.GET_CCP_VERSION, major=major, minor=minor)
         data = self._receive()
         return data[0], data[1]
 
-    def exchangeId(self, device_info: int = 0) -> tuple:
+    def exchange_id(self, device_info: int = 0) -> tuple:
         """
         Exchange ID with slave.
         Parameters
@@ -400,16 +400,16 @@ class Master:
     # #
 
     def test(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def dnload6(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def short_up(self, size, address, addressExtension):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def start_stop_all(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def set_s_status(self, status_bits: int):
         """
@@ -435,31 +435,31 @@ class Master:
         self._receive()
 
     def get_s_status(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def build_chksum(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def clear_memory(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def program(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def program6(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def move(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def get_active_cal_page(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def select_cal_page(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def unlock(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def get_seed(self):
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
