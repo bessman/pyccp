@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from typing import List
-import binpacking
 
 from .. import SessionStatus, CCPError
 from ..master import Master
@@ -19,19 +18,35 @@ class DAQSession:
         self._initialized = False
         self._running = False
 
-    def _pack_elements(self):
-        """Pack elements into ODTs using greedy approximation:
-            https://en.wikipedia.org/wiki/Bin_packing_problem
+    def _pack_elements(self, volume: int = 7) -> List[List[Element]]:
+        """This function implements the First Fit Descending (FFD) algorithm to
+        pack Elements (https://en.wikipedia.org/wiki/Bin_packing_problem).
+        Parameters
+        ----------
+        volume : int, optional
+            The volume into which to pack the elements. Defaults to 7, which
+            is the maximum length of an ODT.
+        
+        Returns
+        -------
+        bins : List[List[Element]]
+            List of lists of elements, packed so that the sum of their size
+            does not exceed the specified volume.
         """
-        elements_dict = {e: e.size for e in self.elements}
-        MAX_ODT_LENGTH = 7
-        element_bins = binpacking.to_constant_volume(elements_dict, MAX_ODT_LENGTH)
-        element_bins = [list(d.keys()) for d in element_bins]
-
-        for i, b in enumerate(element_bins):
-            odt = ObjectDescriptorTable(elements=b, number=i)
-            odt.register()
-            self.odts.append(odt)
+        sorted_elements = {e for e in sorted(self.elements, reverse=True, key=lambda e: e.size)}
+        bins = []
+    
+        for se in sorted_elements:
+            for b in bins:
+                if sum([e.size for e in b]) + se.size <= volume:
+                    # The item fits in an existing bin
+                    b.append(se)
+                    break
+            else:
+                # The item did not fit in an existing bin, put it in a new bin
+                bins.append([se])
+    
+        return bins
 
     def _get_daq_lists(self):
         daq_list_size = None
@@ -77,7 +92,13 @@ class DAQSession:
             self.stop()
 
         self.master.connect(self.station_address)
-        self._pack_elements()
+        bins = self._pack_elements()
+
+        for i, b in enumerate(bins):
+            odt = ObjectDescriptorTable(elements=b, number=i)
+            odt.register()
+            self.odts.append(odt)
+
         self._get_daq_lists()
         self._ensure_odts_fit()
         self._send_daq_lists()
