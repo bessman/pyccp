@@ -54,9 +54,19 @@ class TestSessions(unittest.TestCase):
             [self.test_elements[1], self.test_elements[4]],
             [self.test_elements[5]],
         ]
-        print(packed)
-        print(expected)
         self.assertEqual(packed, expected)
+
+    def test_get_daq_lists(self):
+        reply = CommandReturnMessage.from_can_message(self.acknowledge)
+        reply.data[3:5] = [10, 0]
+        self.master._queue.on_message_received(reply)
+        reply = CommandReturnMessage.from_can_message(self.acknowledge)
+        reply.data[3:5] = [0, 0]
+        reply.ctr = 1
+        self.master._queue.on_message_received(reply)
+        self.daq_session._get_daq_lists()
+        expected = [(0, 10)]
+        self.assertEqual(self.daq_session.daq_lists, expected)
 
 
 if __name__ == "__main__":
