@@ -92,7 +92,9 @@ class Master:
         if crm.ctr == self.ctr:
             self.ctr = (self.ctr + 1) % 0x100
         else:
-            raise CCPError("Counter mismatch")
+            raise CCPError(
+                "Counter mismatch: Internal {}, received {}".format(self.ctr, crm.ctr)
+            )
 
         if crm.return_code == ReturnCodes.ACKNOWLEDGE:
             return crm.data[3:]

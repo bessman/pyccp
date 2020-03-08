@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import can
+from copy import deepcopy
 
 from . import DTOType
 
@@ -53,6 +54,6 @@ class CCPMessage(can.Message):
 
         for s in can.Message.__slots__:
             if not s[:2] == "__":
-                super().__setattr__(ccpmsg, s, msg.__getattribute__(s))
+                ccpmsg.__setattr__(s, deepcopy(msg.__getattribute__(s)))
 
         return ccpmsg
