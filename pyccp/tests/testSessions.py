@@ -76,6 +76,19 @@ class TestSessions(unittest.TestCase):
         self.daq_session.daq_lists = [(0, 3)]
         self.assertRaises(CCPError, self.daq_session._ensure_odts_fit)
 
+    def test_send_daq_lists(self):
+        for e in range(len(2 * self.test_elements) + 2):
+            reply = CommandReturnMessage.from_can_message(self.acknowledge)
+            reply.ctr = e
+            self.master._queue.on_message_received(reply)
+
+        self.daq_session.odts = [
+            ObjectDescriptorTable(elements=[self.test_elements[i]], number=i)
+            for i in range(len(self.test_elements))
+        ]
+        self.daq_session.daq_lists = [(0, 3), (3, 4)]
+        self.daq_session._send_daq_lists()
+
 
 if __name__ == "__main__":
     unittest.main()  # pragma: no cover
