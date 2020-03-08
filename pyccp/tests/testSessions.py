@@ -62,21 +62,20 @@ class TestSessions(unittest.TestCase):
         expected = [(0, 10)]
         self.assertEqual(self.daq_session.daq_lists, expected)
 
-    def test_ensure_odts_fit(self):
+    def make_odts(self):
         self.daq_session.odts = [
             ObjectDescriptorTable(elements=[self.test_elements[i]], number=i)
             for i in range(len(self.test_elements))
         ]
+
+    def test_ensure_odts_fit(self):
+        self.make_odts()
         self.daq_session.daq_lists = [(0, 3)]
         self.assertRaises(CCPError, self.daq_session._ensure_odts_fit)
 
     def test_send_daq_lists(self):
         self.set_daq_lists_replies()
-
-        self.daq_session.odts = [
-            ObjectDescriptorTable(elements=[self.test_elements[i]], number=i)
-            for i in range(len(self.test_elements))
-        ]
+        self.make_odts()
         self.daq_session.daq_lists = [(0, 3), (3, 4)]
         self.daq_session._set_daq_lists()
 
