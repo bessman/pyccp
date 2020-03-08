@@ -14,7 +14,7 @@ from ..messages.data_acquisition import (
 from ..messages.command_receive import CommandReceiveObject
 from ..master import Master
 from ..session import DAQSession
-
+from .. import CCPError
 
 CRO_ID = 0x7E1
 DTO_ID = 0x321
@@ -67,6 +67,14 @@ class TestSessions(unittest.TestCase):
         self.daq_session._get_daq_lists()
         expected = [(0, 10)]
         self.assertEqual(self.daq_session.daq_lists, expected)
+
+    def test_ensure_odts_fit(self):
+        self.daq_session.odts = [
+            ObjectDescriptorTable(elements=[self.test_elements[i]], number=i)
+            for i in range(len(self.test_elements))
+        ]
+        self.daq_session.daq_lists = [(0, 3)]
+        self.assertRaises(CCPError, self.daq_session._ensure_odts_fit)
 
 
 if __name__ == "__main__":
