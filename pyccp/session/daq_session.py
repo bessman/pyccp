@@ -19,8 +19,8 @@ class DAQSession:
         self._running = False
 
     def _pack_elements(self, volume: int = 7) -> List[List[Element]]:
-        """This function implements the First Fit Descending (FFD) algorithm to
-        pack Elements (https://en.wikipedia.org/wiki/Bin_packing_problem).
+        """This function implements a First Fit Descending (FFD) algorithm to
+        pack Elements efficiently (https://en.wikipedia.org/wiki/Bin_packing_problem).
         Parameters
         ----------
         volume : int, optional
@@ -33,20 +33,20 @@ class DAQSession:
             List of lists of elements, packed so that the sum of their size
             does not exceed the specified volume.
         """
-        sorted_elements = {e for e in sorted(self.elements, reverse=True, key=lambda e: e.size)}
-        bins = []
-    
+        sorted_elements = sorted(self.elements, reverse=True, key=lambda e: e.size)
+        packed = []
+
         for se in sorted_elements:
-            for b in bins:
-                if sum([e.size for e in b]) + se.size <= volume:
+            for p in packed:
+                if sum([e.size for e in p]) + se.size <= volume:
                     # The item fits in an existing bin
-                    b.append(se)
+                    p.append(se)
                     break
             else:
                 # The item did not fit in an existing bin, put it in a new bin
-                bins.append([se])
-    
-        return bins
+                packed.append([se])
+
+        return packed
 
     def _get_daq_lists(self):
         daq_list_size = None
