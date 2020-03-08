@@ -68,12 +68,12 @@ class DAQSession:
         if len(self.odts) > sum(self.daq_lists[-1]):
             raise CCPError("Not enough space in DAQ lists.")
 
-    def _send_daq_lists(self):
+    def _set_daq_lists(self):
         self.master.set_s_status(status_bits=SessionStatus.CAL)
 
         j = 0
         for i, dl in enumerate(self.daq_lists):
-            for j, odt in enumerate(self.odts, start=j):
+            for j, odt in enumerate(self.odts[j:], start=j):
                 if j == sum(dl):
                     break
 
@@ -90,6 +90,7 @@ class DAQSession:
         """
         if self._initialized:
             self.stop()
+            self.initialize()
 
         self.master.connect(self.station_address)
         bins = self._pack_elements()
@@ -101,7 +102,7 @@ class DAQSession:
 
         self._get_daq_lists()
         self._ensure_odts_fit()
-        self._send_daq_lists()
+        self._set_daq_lists()
         self._initialized = True
 
     def _start_stop_all(self, mode: int):

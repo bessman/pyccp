@@ -57,13 +57,7 @@ class TestSessions(unittest.TestCase):
         self.assertEqual(packed, expected)
 
     def test_get_daq_lists(self):
-        reply = CommandReturnMessage.from_can_message(self.acknowledge)
-        reply.data[3:5] = [10, 0]
-        self.master._queue.on_message_received(reply)
-        reply = CommandReturnMessage.from_can_message(self.acknowledge)
-        reply.data[3:5] = [0, 0]
-        reply.ctr = 1
-        self.master._queue.on_message_received(reply)
+        self.get_daq_lists_replies()
         self.daq_session._get_daq_lists()
         expected = [(0, 10)]
         self.assertEqual(self.daq_session.daq_lists, expected)
@@ -77,17 +71,40 @@ class TestSessions(unittest.TestCase):
         self.assertRaises(CCPError, self.daq_session._ensure_odts_fit)
 
     def test_send_daq_lists(self):
-        for e in range(len(2 * self.test_elements) + 2):
-            reply = CommandReturnMessage.from_can_message(self.acknowledge)
-            reply.ctr = e
-            self.master._queue.on_message_received(reply)
+        self.set_daq_lists_replies()
 
         self.daq_session.odts = [
             ObjectDescriptorTable(elements=[self.test_elements[i]], number=i)
             for i in range(len(self.test_elements))
         ]
         self.daq_session.daq_lists = [(0, 3), (3, 4)]
-        self.daq_session._send_daq_lists()
+        self.daq_session._set_daq_lists()
+
+    def get_daq_lists_replies(self, start=0):
+        # get daq lists
+        reply = CommandReturnMessage.from_can_message(self.acknowledge)
+        reply.data[3:5] = [10, 0]
+        reply.ctr = start
+        self.master._queue.on_message_received(reply)
+        reply = CommandReturnMessage.from_can_message(self.acknowledge)
+        reply.data[3:5] = [0, 0]
+        reply.ctr = start + 1
+        self.master._queue.on_message_received(reply)
+
+    def set_daq_lists_replies(self, start=0):
+        # send daq lists
+        for e in range(start, 2 * len(self.test_elements) + 2 + start):
+            reply = CommandReturnMessage.from_can_message(self.acknowledge)
+            reply.ctr = e
+            self.master._queue.on_message_received(reply)
+
+    def test_initialize(self):
+        self.master._queue.on_message_received(self.acknowledge)
+        self.get_daq_lists_replies(start=1)
+        self.set_daq_lists_replies(start=3)
+        self.daq_session.initialize()
+        self.assertTrue(self.daq_session._initialized)
+        self.daq_session._initialized = False
 
 
 if __name__ == "__main__":
