@@ -1,4 +1,4 @@
-"""CAN Calibration Protocal."""
+"""CAN Calibration Protocol."""
 
 import can
 import enum
