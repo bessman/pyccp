@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""CCP DAQ-DTO and associated data types."""
+
 import cantools
 import enum
 import decimal
@@ -11,11 +13,7 @@ from .data_transmission import DataTransmissionObject
 
 
 class DataAcquisitionMessage(DataTransmissionObject):
-    """
-    Data Acquisition Messages (DAQ) are a type of Data Transmission Object
-    which is sent periodically from a slave to the master during DAQ sessions.
-    They contain data specified by Object Descriptor Tables.
-    """
+    """A DTO sent from slave to master during a data acquisition session."""
 
     def __init__(
         self,
@@ -23,7 +21,8 @@ class DataAcquisitionMessage(DataTransmissionObject):
         odt_number: int = 0,
         data: bytearray = bytearray(MAX_DLC),
     ):
-        """
+        """Create a DAQ message.
+
         Parameters
         ----------
         odt_number : int
@@ -36,13 +35,26 @@ class DataAcquisitionMessage(DataTransmissionObject):
         Returns
         -------
         None.
-
         """
         super().__init__(
             arbitration_id=arbitration_id, pid=odt_number, data=data,
         )
 
     def decode(self) -> Dict[str, int]:
+        """Decode the message data.
+
+        Raises
+        ------
+        KeyError
+            If this error is raised, it usually means that no ODT corresponding
+            to odt_number has been registered with DAQ_DB.
+
+        Returns
+        -------
+        Dict[str, int]
+            A dictionary with {name: decoded value}-pairs for all Elements in
+            this message.
+        """
         try:
             return DAQ_DB.get_message_by_name(str(self.odt_number)).decode(
                 self.data[1:]
@@ -52,6 +64,12 @@ class DataAcquisitionMessage(DataTransmissionObject):
 
     @property
     def odt_number(self) -> int:
+        """Get the ODT number of this DAQ message, held in data[0].
+
+        Returns
+        -------
+        int
+        """
         return self.pid
 
     @odt_number.setter
@@ -60,10 +78,7 @@ class DataAcquisitionMessage(DataTransmissionObject):
 
 
 class Element(cantools.database.Signal):
-    """
-    Elements are the contents of Object Descriptor Tables. They are pointers
-    to variables inside a slave.
-    """
+    """Elements hold pointers to variables in the slave device."""
 
     def __init__(
         self,
@@ -84,7 +99,8 @@ class Element(cantools.database.Signal):
         is_float: bool = False,
         decimal: decimal.Decimal = None,
     ):
-        """
+        """Create a DAQ Element.
+
         Parameters
         ----------
         name : str
@@ -99,7 +115,6 @@ class Element(cantools.database.Signal):
         Returns
         -------
         None.
-
         """
         self._address = address
         self._extension = extension
@@ -123,9 +138,7 @@ class Element(cantools.database.Signal):
 
     @property
     def address(self):
-        """The element's memory address in the slave ECU.
-        """
-
+        """Get the element's memory address in the slave device."""
         return self._address
 
     @address.setter
@@ -134,9 +147,7 @@ class Element(cantools.database.Signal):
 
     @property
     def extension(self):
-        """The element's address extension.
-        """
-
+        """Get the element's address extension."""
         return self._extension
 
     @extension.setter
@@ -145,8 +156,7 @@ class Element(cantools.database.Signal):
 
     @property
     def size(self):
-        """The element's length in bytes.
-        """
+        """Get the element's length in bytes."""
         # cantool.database.Signal.length is in bits
         return self._length // 8
 
@@ -156,31 +166,26 @@ class Element(cantools.database.Signal):
 
     @property
     def start_byte(self):
-        """Translate from starting bit to starting byte.
-        """
+        """Translate from starting bit to starting byte."""
         return self._start // 8
 
     @start_byte.setter
     def start_byte(self, value):
-        """Translate from starting byte to starting bit. See
-        cantools.database.can.Signal for details on the byte order stuff.
+        """Translate from starting byte to starting bit.
+
+        See cantools.database.can.Signal for details on the byte order stuff.
         """
         self._start = value * 8 + 7 if self.byte_order == "big_endian" else value * 8
 
 
 class ObjectDescriptorTable(cantools.database.Message):
-    """
-    Object Descriptor Tables (ODT) describe the layout of DAQ messages. ODTs
-    contain Elements which refer to memory addresses in a slave. ODTs are
-    sent from the master to a slave during session configuration with the
-    SET_DAQ_PTR and WRITE_DAQ commands, and then used by the master to parse
-    data received from a slave during a DAQ session.
-    """
+    """Object Descriptor Tables (ODT) describe the layout of DAQ messages."""
 
     def __init__(
         self, elements: List[Element], number: int, length: int = 7,
     ):
-        """
+        """Create an ODT.
+
         Parameters
         ----------
         elements : list of Element
@@ -193,7 +198,6 @@ class ObjectDescriptorTable(cantools.database.Message):
         Returns
         -------
         None.
-
         """
         self._number = number
         self.elements = elements
@@ -218,25 +222,23 @@ class ObjectDescriptorTable(cantools.database.Message):
             start_byte += e.size
 
     def register(self):
+        """Register this ODT with DAQ_DB."""
         DAQ_DB.messages.append(self)
         DAQ_DB.refresh()
 
     def deregister(self):
+        """Remove this ODT from DAQ_DB."""
         DAQ_DB.messages.remove(self)
         DAQ_DB.refresh()
 
     @property
     def number(self):
-        """ODT number.
-        """
-
+        """Get the ODT number."""
         return self._number
 
     @property
     def elements(self):
-        """Elements of the ODT.
-        """
-
+        """Get Element in the ODT."""
         return self._signals
 
     @elements.setter

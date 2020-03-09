@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""A Data Transmission Object (DTO)."""
+
 from typing import Union
 from copy import deepcopy
 
@@ -9,9 +11,9 @@ from . import DTOType, MessageByte
 
 
 class DataTransmissionObject(CCPMessage):
-    """
-    Data Transmission Objects (DTO) are sent from the slave to the master, and
-    are one of three types:
+    """DTOs are sent from the slave to the master.
+
+    Three types of DTO exist:
         Command Return Messages (CRM) are sent in response to CROs.
         Event Messages (EVM) are sent in response to slave internal events.
         Data Acquisition Messages (DAQ) are sent periodically during DAQ
@@ -23,7 +25,8 @@ class DataTransmissionObject(CCPMessage):
     def __init__(
         self, arbitration_id: int, pid: Union[DTOType, int], data: bytearray,
     ):
-        """
+        """Create a DTO.
+
         Parameters
         ----------
         pid : DTOType or int
@@ -36,7 +39,6 @@ class DataTransmissionObject(CCPMessage):
         Returns
         -------
         None.
-
         """
         # Not sure why deepcopy is necessary here, but without it the data slot
         # is sometimes (?) shared between instances.
@@ -46,6 +48,7 @@ class DataTransmissionObject(CCPMessage):
 
     @property
     def pid(self) -> Union[DTOType, int]:
+        """Get the DTO's PID value."""
         ret = self.data[MessageByte.DTO_PID]
 
         if ret >= DTOType.EVENT_MESSAGE:

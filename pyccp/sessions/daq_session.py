@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""A Data Acquisition Session."""
+
 from typing import List
 
 from .. import SessionStatus, CCPError
@@ -9,6 +11,8 @@ from ..messages.data_acquisition import Element, ObjectDescriptorTable
 
 
 class DAQSession:
+    """During a DAQ session, the slave periodically sends internal variable values."""
+
     def __init__(self, master: Master, station_address: int, elements: List[Element]):
         self.master = master
         self.station_address = station_address
@@ -19,8 +23,10 @@ class DAQSession:
         self._running = False
 
     def _pack_elements(self, volume: int = 7) -> List[List[Element]]:
-        """This function implements a First Fit Descending (FFD) algorithm to
-        pack Elements efficiently (https://en.wikipedia.org/wiki/Bin_packing_problem).
+        """Pack elements according to the First Fit Descending (FFD) algorithm.
+
+        See https://en.wikipedia.org/wiki/Bin_packing_problem
+
         Parameters
         ----------
         volume : int, optional
@@ -86,8 +92,7 @@ class DAQSession:
         self.master.set_s_status(status_bits=SessionStatus.CAL | SessionStatus.DAQ)
 
     def initialize(self):
-        """Set up ODTs and send them to slave.
-        """
+        """Set up ODTs and send them to slave."""
         if self._initialized:
             self.stop()
             self.initialize()
@@ -113,6 +118,7 @@ class DAQSession:
             )
 
     def run(self):
+        """Start the DAQ session."""
         if self._initialized:
             START = 1
             self._start_stop_all(mode=START)
@@ -122,6 +128,7 @@ class DAQSession:
             self.run()
 
     def stop(self):
+        """Stop the DAQ session."""
         if self._running:
             STOP = 0
             self._start_stop_all(mode=STOP)

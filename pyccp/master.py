@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""A CAN Calibration Protocol (CCP) master node."""
+
 __copyright__ = """
     pySART - Simplified AUTOSAR-Toolkit for Python.
 
@@ -37,6 +39,8 @@ logger = logging.getLogger(__name__)
 
 
 class Master:
+    """A CAN Calibration Protocol (CCP) master node."""
+
     def __init__(
         self, transport: can.Bus, cro_id: int, dto_id: int,
     ):
@@ -69,21 +73,21 @@ class Master:
         )
 
     def _receive(self) -> bytearray:
-        """
+        """Check that the response is what we expect it to be.
+
         Raises
         ------
         CcpError
-
-        If no Command Return Message is received within 0.5s, or
-        if the CRM counter does not match the CRO counter, or
-        if the return code is not ACKNOWLEDGE.
+            If no Command Return Message is received within 0.5s, or
+            if the CRM counter does not match the CRO counter, or
+            if the return code is not ACKNOWLEDGE.
 
         Returns
         -------
         bytearray
             Five data bytes.
-        """
 
+        """
         try:
             crm = self._queue.get_command_return_message()
         except Empty:
@@ -102,6 +106,12 @@ class Master:
             raise CCPError(ReturnCodes(crm.return_code).name)
 
     def stop(self):
+        """Disconnect from CAN bus.
+
+        Returns
+        -------
+        None.
+        """
         self._notifier.stop()
         self._transport.shutdown()
 
@@ -110,51 +120,49 @@ class Master:
     # #
 
     def connect(self, station_address: int):
-        """
-        Connect to slave specified by :param station_address. All subsequent
-        commands refer to this specific slave. If a different slave is already
-        connected, it will be disconnected. A connect command to an already
-        connected slave is acknowledged without further action.
+        """Connect to slave specified by station_address.
+
         Parameters
         ----------
         station_address : int
             Station address of slave ecu (little endian).
+
         Returns
         -------
         None.
         """
-
         self._send(CommandCodes.CONNECT, station_address=station_address)
         self._receive()
 
     def get_ccp_version(
         self, major: int = CCP_VERSION[0], minor: int = CCP_VERSION[1]
     ) -> tuple:
-        """
-        Send desired CCP version to slave.
+        """Send desired CCP version to slave.
+
         Parameters
         ----------
         major : int, optional
             Major version number. The default is ccp.CCP_VERSION[0].
         minor : int, optional
              Minor version number. The default is ccp.CCP_VERSION[1].
+
         Returns
         -------
         tuple
-            major, minor
+            CCP version implemented by slave as (major, minor).
         """
-
         self._send(CommandCodes.GET_CCP_VERSION, major=major, minor=minor)
         data = self._receive()
         return data[0], data[1]
 
     def exchange_id(self, device_info: int = 0) -> tuple:
-        """
-        Exchange ID with slave.
+        """Exchange ID with slave.
+
         Parameters
         ----------
         device_info : TYPE, optional
            Implementation specific. The default is 0.
+
         Returns
         -------
         tuple
@@ -163,7 +171,6 @@ class Master:
              availability: Resource availability mask,
              protection:   Resource protection mask
         """
-
         self._send(CommandCodes.EXCHANGE_ID, device_info=device_info)
         size, dtype, availability, protection, _ = self._receive()
         return size, dtype, availability, protection
@@ -174,8 +181,8 @@ class Master:
         extension: int = 0,
         mta: int = MemoryTransferAddressNumber.MTA0_NUMBER,
     ):
-        """
-        Set memory transfer address for subsequent data transfer.
+        """Set memory transfer address for subsequent data transfer.
+
         Parameters
         ----------
         address : int
@@ -186,81 +193,66 @@ class Master:
             or a memory segment. The default is 0x00.
         mta : int, optional
             See MemoryTransferAddressNumber. The default is MTA0_NUMBER.
+
         Returns
         -------
         None.
         """
-
         self._send(CommandCodes.SET_MTA, address=address, extension=extension, mta=mta)
         self._receive()
 
     def dnload(self, size: int, data: int) -> tuple:
-        """
-        Transfer data from master to slave. Up to five (5) bytes can be
-        transferred per message. The data will be written to MTA0, after which
-        MTA0 is incremented to point at the address immediately following the
-        written data.
+        """Transfer data from master to slave.
+
         Parameters
         ----------
         size : int
             Number of bytes to be transferred (0 - 5).
         data : int
             Data to be written to MTA0 in the slave.
+
         Returns
         -------
         tuple
              mta0_ext:  Current MTA0 extension,
              mta0_addr: Current MTA0 address
         """
-
         self._send(CommandCodes.DNLOAD, size=size, data=data)
         data = self._receive()
         return data[0], data[1:]
 
     def upload(self, size: int) -> bytearray:
-        """
-        Transfer data from slave to master. Up to five (5) bytes can be
-        transferred per message. The data is read starting from memory address
-        MTA0, after which MTA0 is incremented to point to the address after the
-        uploaded data.
+        """Transfer data from slave to master.
+
         Parameters
         ----------
         size : int
             Number of bytes to be transferred (0 - 5).
+
         Returns
         -------
         bytearray
             <size> number of data bytes.
         """
-
         self._send(CommandCodes.UPLOAD, size=size)
         data = self._receive()
         return data[:size]
 
     def get_daq_size(self, daq_list_number: int, dto_id: int = None) -> tuple:
-        """
-        Returns the size of the specified DAQ list as the number of available
-        Object Descriptor Tables (ODTs) and clears the current list. If the
-        specified list number is not available, size = 0 should be returned.
-        The DAQ list is initialized and data acquisition by this list is
-        stopped.
-        An individual CAN Identifier may be assigned to a DAQ list to configure
-        multi ECU data acquisition. This feature is optional. If the given
-        identifier isn’t possible, an error code is returned. 29 bit CAN
-        identifiers are marked by the most significant bit set.
+        """Return the size of the specified DAQ list.
+
         Parameters
         ----------
         daq_list_number : int
-
         dto_id : int
             CAN ID of the DTO dedicated to this DAQ list.
+
         Returns
         -------
         tuple
              size: Number of ODTs in DAQ list,
              odt0: First ODT number in DAQ list
         """
-
         dto_id = self.dto_id if dto_id is None else dto_id
 
         self._send(
@@ -270,21 +262,18 @@ class Master:
         return data[0], data[1]
 
     def set_daq_ptr(self, daq_list_number: int, odt_number: int, element_number: int):
-        """
-        Initializes the DAQ list pointer for a subsequent write to a DAQ list.
+        """Initialize the DAQ list pointer for a subsequent write.
+
         Parameters
         ----------
         daq_list_number : int
-
         odt_number : int
-
         element_number : int
 
         Returns
         -------
         None.
         """
-
         self._send(
             CommandCodes.SET_DAQ_PTR,
             daq_list_number=daq_list_number,
@@ -294,29 +283,21 @@ class Master:
         self._receive()
 
     def write_daq(self, size: int, extension: int, address: int):
-        """
-        Writes one entry (description of single DAQ element) to a DAQ list
-        defined by the DAQ list pointer (see SET_DAQ_PTR). The following DAQ
-        element sizes are defined: 1 byte , 2 bytes, 4 bytes.
-        An ECU may not support individual address extensions for each element
-        and 2 or 4 byte element sizes. It is the responsibility of the master
-        device to care for the ECU limitations. The limitations may be defined
-        in the slave device description file (e.g. ASAP2). It is the
-        responsibility of the slave device, that all bytes of a DAQ element are
-        consistent upon transmission.
+        """Write a DAQ element to the DAQ list set by set_daq_ptr.
+
         Parameters
         ----------
-        size : int
-            Size of DAQ element in bytes (1, 2, 4).
+        size : {1, 2, 4}
+            Size of DAQ element in bytes.
         extension : int
             Address extension of DAQ element.
         address : int
             Memory address of DAQ element in slave.
+
         Returns
         -------
         None.
         """
-
         self._send(
             CommandCodes.WRITE_DAQ, size=size, extension=extension, address=address
         )
@@ -330,35 +311,25 @@ class Master:
         event_channel: int = 0,
         rate_prescaler: int = 1,
     ):
-        """
-        This command is used to start or to stop the data acquisition or to
-        prepare a synchronized start of the specified DAQ list.
+        """Start or to stop data acquisition.
+
         Parameters
         ----------
-        mode : int
-            Must be 0, 1, or 2.
-            0 stops specified DAQ list, 1 starts specified DAQ list,
-            2 prepares DAQ list for synchronised start. If the slave device is
-            not capable of performing the synchronized start of the data
-            acquisition, the slave device may start data acquisition
-            immediately.
-        daqListNumber : int
-            DESCRIPTION.
-        lastOdtNumber : int
-            Specifies which ODTs (From 0 to Last ODT number) of this DAQ list
-            should be transmitted.
-        eventChannel : int
-            Specifies the generic signal source that effectively determines the
-            data transmission timing.
-        ratePrescaler : int
-            To allow reduction of the desired transmission rate, a prescaler
-            may be applied to the Event Channel. The prescaler value factor
-            must be greater than or equal to 1.
+        mode : {0, 1, 2}
+            0 stop specified DAQ list,
+            1 start specified DAQ list,
+            2 prepare DAQ list for synchronised start.
+        daq_list_number : int
+        last_odt_number : int
+            Acquire data from ODTs up to and including last_odt_number.
+        event_channel : int, optional
+        ratePrescaler : int, optinal
+            Set to >1 to decrease transmission rate.
+
         Returns
         -------
         None.
         """
-
         self._send(
             CommandCodes.START_STOP,
             mode=mode,
@@ -372,24 +343,20 @@ class Master:
     def disconnect(
         self, station_address: int, permanent: int = 1,
     ):
-        """
-        Disconnects the slave device. The disconnect can be temporary or
-        permanent. Terminating the session invalidates all state information
-        and resets the slave protection status.
-        A temporary disconnect doesn’t stop the transmission of DAQ messages.
-        The MTA values, the DAQ setup, the session status and the protection
-        status are unaffected by the temporary disconnect and remain unchanged.
+        """Disconnect from slave device.
+
         Parameters
         ----------
-        permanent : int
-            0: temporary, 1: permanent.
+        permanent : {0, 1}
+            0 temporary,
+            1 permanent.
         station_address : int
-            Station address of slave ecu (little endian).
+            Station address of slave device (little endian).
+
         Returns
         -------
         None.
         """
-
         self._send(
             CommandCodes.DISCONNECT,
             permanent=permanent,
@@ -414,25 +381,21 @@ class Master:
         raise NotImplementedError  # pragma: no cover
 
     def set_s_status(self, status_bits: int):
-        """
-        Keeps the slave node informed about the current state of the
-        calibration session.
+        """Inform the slave device about the calibration session state.
+
         Parameters
         ----------
         status_bits : int
             0x01 CAL:     Calibration data initialized
             0x02 DAQ:     DAQ list(s) initialized
             0x04 RESUME:  Resume session after temporary disconnect
-            0x08 reserved
-            0x10 reserved
-            0x20 reserved
             0x40 STORE:   Save calibration during device shut-down
             0x80 RUN:     Session in progress
+
         Returns
         -------
         None.
         """
-
         self._send(CommandCodes.SET_S_STATUS, status_bits=status_bits)
         self._receive()
 

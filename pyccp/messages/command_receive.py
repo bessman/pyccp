@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""A Command Receive Object (CRO)."""
+
 from typing import Dict
 
 from .ccp_message import CCPMessage
@@ -8,10 +10,7 @@ from . import CommandCodes, COMMAND_DISPATCH, MAX_DLC, MessageByte
 
 
 class CommandReceiveObject(CCPMessage):
-    """
-    Command Receive Objects (CRO) are sent from the master to the slave and
-    contain commands and associated data which the slave must handle.
-    """
+    """CROs hold commands from the master to the slave."""
 
     def __init__(
         self,
@@ -20,7 +19,8 @@ class CommandReceiveObject(CCPMessage):
         ctr: int = 0,
         **kwargs: int,
     ):
-        """
+        """Create a CommandReceiveObject.
+
         Parameters
         ----------
         command_code : CommandCodes
@@ -33,7 +33,6 @@ class CommandReceiveObject(CCPMessage):
         Returns
         -------
         None.
-
         """
         self.data = bytearray(MAX_DLC)
         self.command_code = command_code
@@ -45,6 +44,18 @@ class CommandReceiveObject(CCPMessage):
         super().__init__(arbitration_id=arbitration_id, data=self.data)
 
     def encode(self, **kwargs: int) -> bytes:
+        """Encode keyword arguments to bytes.
+
+        Parameters
+        ----------
+        **kwargs : int
+            Keyword arguments for the command specified by command_code.
+
+        Returns
+        -------
+        bytes
+            Encoded data ready to be transmitted on the CAN bus.
+        """
         parameters = kwargs
         parameters["command_code"] = self.command_code
         parameters["ctr"] = self.ctr
@@ -52,10 +63,18 @@ class CommandReceiveObject(CCPMessage):
         return COMMAND_DISPATCH[self.command_code].encode(parameters)
 
     def decode(self) -> Dict[str, int]:
+        """Decode data bytes to find the keyword arguments used to generate them.
+
+        Returns
+        -------
+        Dict[str, int]
+            Dictionary of {keyword: value}-pairs.
+        """
         return COMMAND_DISPATCH[self.command_code].decode(self.data)
 
     @property
     def command_code(self) -> CommandCodes:
+        """Get the CRO's command_code."""
         return CommandCodes(self.data[MessageByte.CRO_CMD])
 
     @command_code.setter
@@ -67,6 +86,7 @@ class CommandReceiveObject(CCPMessage):
 
     @property
     def ctr(self) -> int:
+        """Get the CRO's counter."""
         return self.data[MessageByte.CRO_CTR]
 
     @ctr.setter

@@ -1,31 +1,30 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""An Event Message (EVM)."""
+
 from . import DTOType, MAX_DLC, MessageByte, ReturnCodes
 from .data_transmission import DataTransmissionObject
 
 
 class EventMessage(DataTransmissionObject):
-    """
-    Event Messages (EVM) are a type of Data Transmission Object which is sent
-    from a slave to the master in response to an internal event in the slave.
-    """
+    """EVMs are sent by the slave in response to an internal event."""
 
     def __init__(
         self,
         arbitration_id: int = 0,
         return_code: ReturnCodes = ReturnCodes.RESOURCE_FUNCTION_NOT_AVAILABLE,
     ):
-        """
+        """Create an EVM.
+
         Parameters
         ----------
         return_code : ReturnCodes
-            The command to send to the slave.
+            Information about the event which triggered the EVM.
 
         Returns
         -------
         None.
-
         """
         self.data = bytearray(MAX_DLC)
         self.return_code = return_code
@@ -35,6 +34,7 @@ class EventMessage(DataTransmissionObject):
 
     @property
     def return_code(self) -> ReturnCodes:
+        """Get the EVM's return_code."""
         return ReturnCodes(self.data[MessageByte.DTO_ERR])
 
     @return_code.setter
