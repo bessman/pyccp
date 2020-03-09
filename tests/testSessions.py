@@ -4,17 +4,12 @@
 import can
 import unittest
 
-from ..messages import CommandCodes, ReturnCodes
-from ..messages.command_return import CommandReturnMessage
-from ..messages.data_acquisition import (
-    DataAcquisitionMessage,
-    Element,
-    ObjectDescriptorTable,
-)
-from ..messages.command_receive import CommandReceiveObject
-from ..master import Master
-from ..session import DAQSession
-from .. import CCPError
+from pyccp.messages import ReturnCodes
+from pyccp.messages.command_return import CommandReturnMessage
+from pyccp.messages.data_acquisition import Element, ObjectDescriptorTable
+from pyccp.master import Master
+from pyccp.sessions import DAQSession
+from pyccp import CCPError
 
 CRO_ID = 0x7E1
 DTO_ID = 0x321
