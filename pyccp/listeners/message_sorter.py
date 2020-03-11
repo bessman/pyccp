@@ -1,18 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 """A can.Listener which sorts incoming CCP messages by type."""
 
 import can
 import queue
 import logging
 
-from ..messages import MessageByte, ReturnCodes
-from ..messages.command_receive import CommandReceiveObject
-from ..messages.command_return import CommandReturnMessage
-from ..messages.event import EventMessage
-from ..messages.data_acquisition import DataAcquisitionMessage
-from ..messages.ccp_message import is_crm, is_cro, is_daq, is_evm
+from pyccp import messages
 
 
 logger = logging.getLogger(__name__)
@@ -46,33 +40,39 @@ class MessageSorter(can.Listener):
         -------
         None.
         """
-        if is_crm(msg=msg, dto_id=self.dto_id):
-            msg = CommandReturnMessage.from_can_message(msg)
+        if messages.is_crm(msg=msg, dto_id=self.dto_id):
+            msg = messages.CommandReturnMessage.from_can_message(msg)
             self._crm_queue.put(msg)
-            ctr = msg.data[MessageByte.CRM_CTR]
-            return_code = ReturnCodes(msg.data[MessageByte.DTO_ERR]).name
+            ctr = msg.data[messages.MessageByte.CRM_CTR]
+            return_code = messages.ReturnCodes(
+                msg.data[messages.MessageByte.DTO_ERR]
+            ).name
             data = self._hexlist(msg.data[3:])
             logger.debug("Received CRM {}:  %s  %s".format(ctr), return_code, data)
 
-        elif is_evm(msg=msg, dto_id=self.dto_id):
-            msg = EventMessage.from_can_message(msg)
+        elif messages.is_evm(msg=msg, dto_id=self.dto_id):
+            msg = messages.EventMessage.from_can_message(msg)
             self._evm_queue.put(msg)
-            return_code = ReturnCodes(msg.data[MessageByte.DTO_ERR]).name
+            return_code = messages.ReturnCodes(
+                msg.data[messages.MessageByte.DTO_ERR]
+            ).name
             logger.debug("Received EVM:  %s", return_code)
 
-        elif is_daq(msg=msg, dto_id=self.dto_id):
-            msg = DataAcquisitionMessage().from_can_message(msg)
+        elif messages.is_daq(msg=msg, dto_id=self.dto_id):
+            msg = messages.DataAcquisitionMessage().from_can_message(msg)
             self._daq_queue.put(msg)
-            odt_number = msg.data[MessageByte.DTO_PID]
+            odt_number = msg.data[messages.MessageByte.DTO_PID]
             data = self._hexlist(msg.data[1:])
             logger.info("Received DAQ#%s:  {}".format(msg.decode()), odt_number)
 
-        elif is_cro(msg=msg, cro_id=self.cro_id):
-            msg = CommandReceiveObject().from_can_message(msg)
+        elif messages.is_cro(msg=msg, cro_id=self.cro_id):
+            msg = messages.CommandReceiveObject().from_can_message(msg)
             self._cro_queue.put(msg)
             # CROs are logged by master
 
-    def get_command_return_message(self, timeout: float = 0.5) -> CommandReturnMessage:
+    def get_command_return_message(
+        self, timeout: float = 0.5
+    ) -> messages.CommandReturnMessage:
         """Return the first CRM in the queue.
 
         Parameters
@@ -91,7 +91,7 @@ class MessageSorter(can.Listener):
         """
         return self._crm_queue.get(timeout=timeout)
 
-    def get_event_message(self, timeout=0.5) -> EventMessage:
+    def get_event_message(self, timeout=0.5) -> messages.EventMessage:
         """Return the first EVM in the queue.
 
         Parameters
@@ -112,7 +112,7 @@ class MessageSorter(can.Listener):
 
     def get_data_acquisition_message(
         self, timeout: float = 0.5
-    ) -> DataAcquisitionMessage:
+    ) -> messages.DataAcquisitionMessage:
         """Return the first DAQ in the queue.
 
         Parameters
@@ -131,7 +131,9 @@ class MessageSorter(can.Listener):
         """
         return self._daq_queue.get(timeout=timeout)
 
-    def get_command_receive_object(self, timeout: float = 0.5) -> CommandReceiveObject:
+    def get_command_receive_object(
+        self, timeout: float = 0.5
+    ) -> messages.CommandReceiveObject:
         """Return the first CRO in the queue.
 
         Parameters

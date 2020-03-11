@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-"""A CAN Calibration Protocol (CCP) master node."""
+"""CCP master node and related types."""
 
 __copyright__ = """
     pySART - Simplified AUTOSAR-Toolkit for Python.
@@ -26,16 +25,31 @@ __copyright__ = """
 """
 
 import can
+import enum
 import logging
 from queue import Empty
 
-from . import CCPError, CCP_VERSION, MemoryTransferAddressNumber
-from .messages import CommandCodes, ReturnCodes
-from .messages.command_receive import CommandReceiveObject
-from .listeners.message_sorter import MessageSorter
+from .error import CCPError
+from .messages import CommandCodes, ReturnCodes, CommandReceiveObject
+from .listeners import MessageSorter
 
 
 logger = logging.getLogger(__name__)
+
+
+CCP_VERSION = (2, 1)
+
+
+class MemoryTransferAddressNumber(enum.IntEnum):
+    """The MTA numbers refer to a pair of pointers in the slave device.
+
+    MTA0 is used by the commands DNLOAD, UPLOAD, DNLOAD_6, SELECT_CAL_PAGE,
+    CLEAR_MEMORY, PROGRAM and PROGRAM_6.
+    MTA1 is used by the MOVE command.
+    """
+
+    MTA0_NUMBER = 0
+    MTA1_NUMBER = 1
 
 
 class Master:

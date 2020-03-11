@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 """CCP DAQ-DTO and associated data types."""
 
 import cantools
@@ -8,7 +7,7 @@ import enum
 import decimal
 from typing import Dict, List, Union
 
-from . import MAX_DLC
+from .ccp_message import MAX_DLC
 from .data_transmission import DataTransmissionObject
 
 

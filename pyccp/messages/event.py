@@ -3,8 +3,9 @@
 
 """An Event Message (EVM)."""
 
-from . import DTOType, MAX_DLC, MessageByte, ReturnCodes
+from .ccp_message import DTOType, MAX_DLC, MessageByte
 from .data_transmission import DataTransmissionObject
+from .command_return import ReturnCodes
 
 
 class EventMessage(DataTransmissionObject):

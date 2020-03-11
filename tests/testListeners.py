@@ -5,15 +5,16 @@ import can
 import unittest
 
 from pyccp.listeners import MessageSorter
-from pyccp.messages import CommandCodes, ReturnCodes
-from pyccp.messages.command_return import CommandReturnMessage
-from pyccp.messages.data_acquisition import (
+from pyccp.messages import (
+    CommandCodes,
+    ReturnCodes,
+    CommandReturnMessage,
     DataAcquisitionMessage,
     Element,
     ObjectDescriptorTable,
+    EventMessage,
+    CommandReceiveObject,
 )
-from pyccp.messages.event import EventMessage
-from pyccp.messages.command_receive import CommandReceiveObject
 
 
 class TestListeners(unittest.TestCase):

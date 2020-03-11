@@ -5,8 +5,23 @@
 
 import can
 from copy import deepcopy
+import enum
 
-from . import DTOType
+
+MAX_DLC = 8
+
+
+class MessageByte(enum.IntEnum):
+    CRO_CMD = 0
+    CRO_CTR = 1
+    DTO_PID = 0
+    DTO_ERR = 1
+    CRM_CTR = 2
+
+
+class DTOType(enum.IntEnum):
+    COMMAND_RETURN_MESSAGE = 0xFF
+    EVENT_MESSAGE = 0xFE
 
 
 def is_cro(msg: can.Message, cro_id: int,) -> bool:

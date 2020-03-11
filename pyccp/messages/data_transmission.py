@@ -6,8 +6,7 @@
 from typing import Union
 from copy import deepcopy
 
-from .ccp_message import CCPMessage
-from . import DTOType, MessageByte
+from .ccp_message import CCPMessage, DTOType, MessageByte
 
 
 class DataTransmissionObject(CCPMessage):

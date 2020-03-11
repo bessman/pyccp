@@ -4,10 +4,21 @@
 """A Data Acquisition Session."""
 
 from typing import List
+import enum
 
-from .. import SessionStatus, CCPError
+from ..error import CCPError
 from ..master import Master
-from ..messages.data_acquisition import Element, ObjectDescriptorTable
+from ..messages import Element, ObjectDescriptorTable
+
+
+class SessionStatus(enum.IntEnum):
+    """Status bits for the SET_S_STATUS command."""
+
+    CAL = 0x01
+    DAQ = 0x02
+    RESUME = 0x04
+    STORE = 0x40
+    RUN = 0x80
 
 
 class DAQSession:

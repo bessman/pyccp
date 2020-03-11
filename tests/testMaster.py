@@ -4,10 +4,9 @@
 import can
 import unittest
 
-from pyccp import CCPError
-from pyccp.master import Master
-from pyccp.messages import ReturnCodes
-from pyccp.messages.command_return import CommandReturnMessage
+from pyccp import Master
+from pyccp.error import CCPError
+from pyccp.messages import ReturnCodes, CommandReturnMessage
 
 
 class TestMaster(unittest.TestCase):
