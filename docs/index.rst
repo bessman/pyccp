@@ -3,14 +3,24 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pyccp's documentation!
-=================================
+.. include:: modules.rst
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+CAN Calibration Protocol for Python
+===================================
 
+.. include:: ../README.rst
 
+Functions and classes
+=====================
+
+.. autoclass:: pyccp.Master
+    :members:
+
+.. autoclass:: pyccp.Element
+    :members:
+
+.. autoclass:: pyccp.DAQSession
+    :members:
 
 Indices and tables
 ==================
