@@ -45,7 +45,12 @@ Example usage
 
    import can
    import pyccp
+   import logging
    import time
+
+   # Configure logging of received messages
+   log = logging.getLogger("ccp_log")
+   log.basicConfig(filename="ccp.csv", level=logging.INFO, format="")
 
    # Configure CAN-bus
    bus = can.Bus(bustype="socketcan", channel="can0", bitrate=500000)
@@ -57,7 +62,6 @@ Example usage
    session = pyccp.DAQSession(
           master=master,
           station_address=0x37,
-          logfile="ccp_log.csv",
           )
 
    # Specify some variables for logging
