@@ -13,12 +13,13 @@ class DataTransmissionObject(CCPMessage):
     """DTOs are sent from the slave to the master.
 
     Three types of DTO exist:
-        Command Return Messages (CRM) are sent in response to CROs.
-        Event Messages (EVM) are sent in response to slave internal events.
-        Data Acquisition Messages (DAQ) are sent periodically during DAQ
-        sessions.
-    This class should not be used directly; it is just a superclass for
-    CRM, EVM, and DAQ classes.
+
+    Command Return Messages (CRM) are sent in response to CROs.
+    Event Messages (EVM) are sent in response to slave internal events.
+    Data Acquisition Messages (DAQ) are sent periodically during DAQ sessions.
+
+    This class should not be used directly; it is just a superclass for CRM, EVM,
+    and DAQ classes.
     """
 
     def __init__(
