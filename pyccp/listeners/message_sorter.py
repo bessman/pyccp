@@ -62,8 +62,10 @@ class MessageSorter(can.Listener):
             msg = messages.DataAcquisitionMessage().from_can_message(msg)
             self._daq_queue.put(msg)
             odt_number = msg.data[messages.MessageByte.DTO_PID]
-            data = self._hexlist(msg.data[1:])
-            logger.info("Received DAQ#%s:  {}".format(msg.decode()), odt_number)
+            logger.debug("Received DAQ#%s", odt_number)
+
+            for k, v in msg.decode().items():
+                logger.info("{},{},{}".format(msg.timestamp, k, v))
 
         elif messages.is_cro(msg=msg, cro_id=self.cro_id):
             msg = messages.CommandReceiveObject().from_can_message(msg)
