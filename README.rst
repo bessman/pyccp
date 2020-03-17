@@ -19,8 +19,8 @@
    :target: https://codeclimate.com/github/bessman/pyccp
    :alt: Maintainability issues
 
-.. |license| image:: http://img.shields.io/badge/license-GPL-blue.svg
-   :target: http://opensource.org/licenses/GPL-2.0
+.. |license| image:: http://img.shields.io/badge/license-LGPL-blue.svg
+   :target: http://opensource.org/licenses/LGPL-3.0
    :alt: GNU General Public License
 
 .. |code_style| image:: https://img.shields.io/badge/code%20style-black-000000.svg
