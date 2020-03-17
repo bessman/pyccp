@@ -24,22 +24,25 @@ class SessionStatus(enum.IntEnum):
 class DAQSession:
     """During a DAQ session, the slave periodically sends internal variable values."""
 
-    def __init__(self, master: Master, station_address: int, elements: List[Element]):
+    def __init__(self, master: Master, station_address: int):
         self.master = master
         self.station_address = station_address
-        self.elements = elements
         self.odts = []
         self.daq_lists = []
         self._initialized = False
         self._running = False
 
-    def _pack_elements(self, volume: int = 7) -> List[List[Element]]:
+    def _pack_elements(
+        self, elements: List[Element], volume: int = 7
+    ) -> List[List[Element]]:
         """Pack elements according to the First Fit Descending (FFD) algorithm.
 
         See https://en.wikipedia.org/wiki/Bin_packing_problem
 
         Parameters
         ----------
+        elements : List[Element]
+            List of element objects to the packed into ODTs.
         volume : int, optional
             The volume into which to pack the elements. Defaults to 7, which
             is the maximum length of an ODT.
@@ -50,7 +53,7 @@ class DAQSession:
             List of lists of elements, packed so that the sum of their size
             does not exceed the specified volume.
         """
-        sorted_elements = sorted(self.elements, reverse=True, key=lambda e: e.size)
+        sorted_elements = sorted(elements, reverse=True, key=lambda e: e.size)
         packed = []
 
         for se in sorted_elements:
@@ -102,14 +105,14 @@ class DAQSession:
 
         self.master.set_s_status(status_bits=SessionStatus.CAL | SessionStatus.DAQ)
 
-    def initialize(self):
+    def initialize(self, elements: List[Element]):
         """Set up ODTs and send them to slave."""
         if self._initialized:
             self.stop()
-            self.initialize()
+            self.initialize(elements)
 
         self.master.connect(self.station_address)
-        bins = self._pack_elements()
+        bins = self._pack_elements(elements)
 
         for i, b in enumerate(bins):
             odt = ObjectDescriptorTable(elements=b, number=i)

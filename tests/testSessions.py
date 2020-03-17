@@ -30,9 +30,7 @@ class TestSessions(unittest.TestCase):
             Element(name="5", size=4, address=5),
         ]
         self.master = Master(transport=self.master_bus, cro_id=CRO_ID, dto_id=DTO_ID)
-        self.daq_session = DAQSession(
-            master=self.master, station_address=0x39, elements=self.test_elements
-        )
+        self.daq_session = DAQSession(master=self.master, station_address=0x39)
         self.acknowledge = CommandReturnMessage(
             arbitration_id=DTO_ID,
             return_code=ReturnCodes.ACKNOWLEDGE,
@@ -45,7 +43,7 @@ class TestSessions(unittest.TestCase):
         self.slave_bus.shutdown()
 
     def test_pack_elements(self):
-        packed = self.daq_session._pack_elements()
+        packed = self.daq_session._pack_elements(self.test_elements)
         expected = [
             [self.test_elements[0], self.test_elements[3], self.test_elements[2]],
             [self.test_elements[1], self.test_elements[4]],
@@ -98,7 +96,7 @@ class TestSessions(unittest.TestCase):
         self.master._queue.on_message_received(self.acknowledge)
         self.get_daq_lists_replies(start=1)
         self.set_daq_lists_replies(start=3)
-        self.daq_session.initialize()
+        self.daq_session.initialize(self.test_elements)
         self.assertTrue(self.daq_session._initialized)
         self.daq_session._initialized = False
 
