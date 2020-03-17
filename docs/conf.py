@@ -20,8 +20,8 @@ import pyccp
 # -- Project information -----------------------------------------------------
 
 project = "pyccp"
-copyright = "2020, Alexander Bessman, Christoph Schueler"
-author = "Alexander Bessman, Christoph Schueler"
+copyright = "2020, Alexander Bessman"
+author = "Alexander Bessman"
 
 # The full version, including alpha/beta/rc tags
 release = "0.1.0"
