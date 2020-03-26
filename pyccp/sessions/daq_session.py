@@ -5,6 +5,9 @@
 
 from typing import List
 import enum
+import os
+
+import pya2l
 
 from ..error import CCPError
 from ..master import Master
@@ -24,13 +27,27 @@ class SessionStatus(enum.IntEnum):
 class DAQSession:
     """During a DAQ session, the slave periodically sends internal variable values."""
 
-    def __init__(self, master: Master, station_address: int):
+    def __init__(self, master: Master, station_address: int, a2l_file: str):
         self.master = master
         self.station_address = station_address
+        self._load_a2l(a2l_file)
         self.odts = []
         self.daq_lists = []
         self._initialized = False
         self._running = False
+
+    def _load_a2l(self, a2l_file):
+        """Load a2l-file."""
+        if not os.path.exists(a2l_file):
+            raise FileNotFoundError(a2l_file)
+
+        db = pya2l.DB()
+        a2l_file += "db" if os.path.exists(a2l_file + "db") else ""
+
+        if os.path.splitext(a2l_file)[1] == ".a2ldb":
+            self.session = db.open_existing(a2l_file)
+        else:
+            self.session = db.import_a2l(a2l_file)
 
     def _pack_elements(
         self, elements: List[Element], volume: int = 7
