@@ -3,11 +3,11 @@
 
 """A Data Acquisition Session."""
 
-from typing import List
+from typing import List, Union
 import enum
 import os
 
-import pya2l
+from pya2l import DB, model
 
 from ..error import CCPError
 from ..master import Master
@@ -41,13 +41,52 @@ class DAQSession:
         if not os.path.exists(a2l_file):
             raise FileNotFoundError(a2l_file)
 
-        db = pya2l.DB()
+        db = DB()
         a2l_file += "db" if os.path.exists(a2l_file + "db") else ""
 
         if os.path.splitext(a2l_file)[1] == ".a2ldb":
             self.session = db.open_existing(a2l_file)
         else:
             self.session = db.import_a2l(a2l_file)
+
+    def _make_elements(self, element_names: List[str]):
+        measurements = self.session.query(model.Measurement)
+        measurements = measurements.filter(model.Measurement.name.in_(element_names))
+        measurements = measurements.all()
+
+        elements = []
+        for m in measurements:
+            size, is_signed, is_float = self._datatype(m.datatype)
+            elements.append(
+                Element(
+                    name=m.name,
+                    address=m.ecu_address,
+                    size=size,
+                    is_signed=is_signed,
+                    is_float=is_float,
+                )
+            )
+
+        return elements
+
+    def _datatype(self, datatype):
+        is_signed = False
+        is_float = False
+
+        if "S" in datatype:
+            is_signed = True
+
+        if "BYTE" in datatype:
+            size = 1
+        elif "WORD" in datatype:
+            size = 2
+        elif "LONG" in datatype:
+            size = 4
+        elif "FLOAT32" in datatype:
+            size = 4
+            is_float = True
+
+        return size, is_signed, is_float
 
     def _pack_elements(
         self, elements: List[Element], volume: int = 7
@@ -122,13 +161,15 @@ class DAQSession:
 
         self.master.set_s_status(status_bits=SessionStatus.CAL | SessionStatus.DAQ)
 
-    def initialize(self, elements: List[Element]):
+    def initialize(self, elements: Union[str, List[str]]):
         """Set up ODTs and send them to slave."""
         if self._initialized:
             self.stop()
             self.initialize(elements)
 
         self.master.connect(self.station_address)
+        elements = elements if isinstance(elements, list) else [elements]
+        elements = self._make_elements(elements)
         bins = self._pack_elements(elements)
 
         for i, b in enumerate(bins):
