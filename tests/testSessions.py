@@ -27,7 +27,8 @@ test_measurements = [
     Measurement(name="5", datatype="ULONG", ecu_address=EcuAddress(address=5)),
 ]
 test_elements = [
-    Element(name=m.name, datatype=m.datatype, address=m.ecu_address.address) for m in test_measurements
+    Element(name=m.name, datatype=m.datatype, address=m.ecu_address.address)
+    for m in test_measurements
 ]
 
 

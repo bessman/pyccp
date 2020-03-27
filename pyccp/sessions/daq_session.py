@@ -42,9 +42,7 @@ class DAQSession:
         for m in measurements:
             elements.append(
                 Element(
-                    name=m.name,
-                    address=m.ecu_address.address,
-                    datatype=m.datatype,
+                    name=m.name, address=m.ecu_address.address, datatype=m.datatype,
                 )
             )
 

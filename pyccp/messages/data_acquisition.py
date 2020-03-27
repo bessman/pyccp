@@ -82,13 +82,13 @@ class Element(cantools.database.Signal):
     """Elements hold pointers to variables in the slave device."""
 
     datatypes = {
-        'UBYTE': {'length': 8, 'is_signed': False, 'is_float': False},
-        'SBYTE': {'length': 8, 'is_signed': True, 'is_float': False},
-        'UWORD': {'length': 16, 'is_signed': False, 'is_float': False},
-        'SWORD': {'length': 16, 'is_signed': True, 'is_float': False},
-        'ULONG': {'length': 32, 'is_signed': False, 'is_float': False},
-        'SLONG': {'length': 32, 'is_signed': True, 'is_float': False},
-        'FLOAT32_IEEE': {'length': 32, 'is_signed': False, 'is_float': True},
+        "UBYTE": {"length": 8, "is_signed": False, "is_float": False},
+        "SBYTE": {"length": 8, "is_signed": True, "is_float": False},
+        "UWORD": {"length": 16, "is_signed": False, "is_float": False},
+        "SWORD": {"length": 16, "is_signed": True, "is_float": False},
+        "ULONG": {"length": 32, "is_signed": False, "is_float": False},
+        "SLONG": {"length": 32, "is_signed": True, "is_float": False},
+        "FLOAT32_IEEE": {"length": 32, "is_signed": False, "is_float": True},
     }
 
     def __init__(
