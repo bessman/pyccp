@@ -3,7 +3,7 @@
 
 """A Data Acquisition Session."""
 
-from typing import List, Union
+from typing import List
 import enum
 import os
 
@@ -27,70 +27,31 @@ class SessionStatus(enum.IntEnum):
 class DAQSession:
     """During a DAQ session, the slave periodically sends internal variable values."""
 
-    def __init__(self, master: Master, station_address: int, a2l_file: str):
+    def __init__(self, master: Master, station_address: int):
         self.master = master
         self.station_address = station_address
-        self._load_a2l(a2l_file)
         self.odts = []
         self.daq_lists = []
         self._initialized = False
         self._running = False
 
-    def _load_a2l(self, a2l_file):
-        """Load a2l-file."""
-        if not os.path.exists(a2l_file):
-            raise FileNotFoundError(a2l_file)
-
-        db = DB()
-        a2l_file += "db" if os.path.exists(a2l_file + "db") else ""
-
-        if os.path.splitext(a2l_file)[1] == ".a2ldb":
-            self.session = db.open_existing(a2l_file)
-        else:
-            self.session = db.import_a2l(a2l_file)
-
-    def _make_elements(self, element_names: List[str]):
-        measurements = self.session.query(model.Measurement)
-        measurements = measurements.filter(model.Measurement.name.in_(element_names))
-        measurements = measurements.all()
-
+    @staticmethod
+    def _make_elements(measurements: List[model.Measurement]) -> List[Element]:
         elements = []
+
         for m in measurements:
-            size, is_signed, is_float = self._datatype(m.datatype)
             elements.append(
                 Element(
                     name=m.name,
-                    address=m.ecu_address,
-                    size=size,
-                    is_signed=is_signed,
-                    is_float=is_float,
+                    address=m.ecu_address.address,
+                    datatype=m.datatype,
                 )
             )
 
         return elements
 
-    def _datatype(self, datatype):
-        is_signed = False
-        is_float = False
-
-        if "S" in datatype:
-            is_signed = True
-
-        if "BYTE" in datatype:
-            size = 1
-        elif "WORD" in datatype:
-            size = 2
-        elif "LONG" in datatype:
-            size = 4
-        elif "FLOAT32" in datatype:
-            size = 4
-            is_float = True
-
-        return size, is_signed, is_float
-
-    def _pack_elements(
-        self, elements: List[Element], volume: int = 7
-    ) -> List[List[Element]]:
+    @staticmethod
+    def _pack_elements(elements: List[Element], volume: int = 7) -> List[List[Element]]:
         """Pack elements according to the First Fit Descending (FFD) algorithm.
 
         See https://en.wikipedia.org/wiki/Bin_packing_problem
@@ -161,15 +122,14 @@ class DAQSession:
 
         self.master.set_s_status(status_bits=SessionStatus.CAL | SessionStatus.DAQ)
 
-    def initialize(self, elements: Union[str, List[str]]):
+    def initialize(self, measurements: List[model.Measurement]):
         """Set up ODTs and send them to slave."""
         if self._initialized:
             self.stop()
-            self.initialize(elements)
+            self.initialize(measurements)
 
         self.master.connect(self.station_address)
-        elements = elements if isinstance(elements, list) else [elements]
-        elements = self._make_elements(elements)
+        elements = self._make_elements(measurements)
         bins = self._pack_elements(elements)
 
         for i, b in enumerate(bins):

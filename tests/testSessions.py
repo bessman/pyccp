@@ -4,6 +4,8 @@
 import can
 import unittest
 
+from pya2l.model import EcuAddress, Measurement
+
 from pyccp import Master, DAQSession
 from pyccp.error import CCPError
 from pyccp.messages import (
@@ -16,19 +18,23 @@ from pyccp.messages import (
 CRO_ID = 0x7E1
 DTO_ID = 0x321
 
+test_measurements = [
+    Measurement(name="0", datatype="ULONG", ecu_address=EcuAddress(address=0)),
+    Measurement(name="1", datatype="ULONG", ecu_address=EcuAddress(address=1)),
+    Measurement(name="2", datatype="UBYTE", ecu_address=EcuAddress(address=2)),
+    Measurement(name="3", datatype="UWORD", ecu_address=EcuAddress(address=3)),
+    Measurement(name="4", datatype="UWORD", ecu_address=EcuAddress(address=4)),
+    Measurement(name="5", datatype="ULONG", ecu_address=EcuAddress(address=5)),
+]
+test_elements = [
+    Element(name=m.name, datatype=m.datatype, address=m.ecu_address.address) for m in test_measurements
+]
+
 
 class TestSessions(unittest.TestCase):
     def setUp(self):
         self.master_bus = can.Bus("test", bustype="virtual")
         self.slave_bus = can.Bus("test", bustype="virtual")
-        self.test_elements = [
-            Element(name="0", size=4, address=0),
-            Element(name="1", size=4, address=1),
-            Element(name="2", size=1, address=2),
-            Element(name="3", size=2, address=3),
-            Element(name="4", size=2, address=4),
-            Element(name="5", size=4, address=5),
-        ]
         self.master = Master(transport=self.master_bus, cro_id=CRO_ID, dto_id=DTO_ID)
         self.daq_session = DAQSession(master=self.master, station_address=0x39)
         self.acknowledge = CommandReturnMessage(
@@ -43,11 +49,11 @@ class TestSessions(unittest.TestCase):
         self.slave_bus.shutdown()
 
     def test_pack_elements(self):
-        packed = self.daq_session._pack_elements(self.test_elements)
+        packed = self.daq_session._pack_elements(test_elements)
         expected = [
-            [self.test_elements[0], self.test_elements[3], self.test_elements[2]],
-            [self.test_elements[1], self.test_elements[4]],
-            [self.test_elements[5]],
+            [test_elements[0], test_elements[3], test_elements[2]],
+            [test_elements[1], test_elements[4]],
+            [test_elements[5]],
         ]
         self.assertEqual(packed, expected)
 
@@ -59,8 +65,8 @@ class TestSessions(unittest.TestCase):
 
     def make_odts(self):
         self.daq_session.odts = [
-            ObjectDescriptorTable(elements=[self.test_elements[i]], number=i)
-            for i in range(len(self.test_elements))
+            ObjectDescriptorTable(elements=[test_elements[i]], number=i)
+            for i in range(len(test_elements))
         ]
 
     def test_ensure_odts_fit(self):
@@ -87,7 +93,7 @@ class TestSessions(unittest.TestCase):
 
     def set_daq_lists_replies(self, start=0):
         # send daq lists
-        for e in range(start, 2 * len(self.test_elements) + 2 + start):
+        for e in range(start, 2 * len(test_elements) + 2 + start):
             reply = CommandReturnMessage.from_can_message(self.acknowledge)
             reply.ctr = e
             self.master._queue.on_message_received(reply)
@@ -96,7 +102,7 @@ class TestSessions(unittest.TestCase):
         self.master._queue.on_message_received(self.acknowledge)
         self.get_daq_lists_replies(start=1)
         self.set_daq_lists_replies(start=3)
-        self.daq_session.initialize(self.test_elements)
+        self.daq_session.initialize(test_measurements)
         self.assertTrue(self.daq_session._initialized)
         self.daq_session._initialized = False
 

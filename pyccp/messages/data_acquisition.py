@@ -7,6 +7,8 @@ import enum
 import decimal
 from typing import Dict, List, Union
 
+from pya2l.model import Datatype
+
 from .ccp_message import MAX_DLC
 from .data_transmission import DataTransmissionObject
 
@@ -79,14 +81,23 @@ class DataAcquisitionMessage(DataTransmissionObject):
 class Element(cantools.database.Signal):
     """Elements hold pointers to variables in the slave device."""
 
+    datatypes = {
+        'UBYTE': {'length': 8, 'is_signed': False, 'is_float': False},
+        'SBYTE': {'length': 8, 'is_signed': True, 'is_float': False},
+        'UWORD': {'length': 16, 'is_signed': False, 'is_float': False},
+        'SWORD': {'length': 16, 'is_signed': True, 'is_float': False},
+        'ULONG': {'length': 32, 'is_signed': False, 'is_float': False},
+        'SLONG': {'length': 32, 'is_signed': True, 'is_float': False},
+        'FLOAT32_IEEE': {'length': 32, 'is_signed': False, 'is_float': True},
+    }
+
     def __init__(
         self,
         name: str,
-        size: int,
+        datatype: Datatype,
         address: int,
         extension: int = 0,
         byte_order: str = "big_endian",
-        is_signed: bool = False,
         initial: Union[int, float] = None,
         scale: int = 1,
         offset: Union[int, float] = 0,
@@ -95,7 +106,6 @@ class Element(cantools.database.Signal):
         unit: str = None,
         choices: enum.IntEnum = None,
         comment: str = None,
-        is_float: bool = False,
         decimal: decimal.Decimal = None,
     ):
         """Create a DAQ Element.
@@ -117,12 +127,14 @@ class Element(cantools.database.Signal):
         """
         self._address = address
         self._extension = extension
+        self.datatype = datatype
+
         super().__init__(
             name=name,
             start=0,
-            length=size * 8,  # Bytes -> bits
+            length=self.length,
             byte_order=byte_order,
-            is_signed=is_signed,
+            is_signed=self.is_signed,
             initial=initial,
             scale=scale,
             offset=offset,
@@ -131,9 +143,25 @@ class Element(cantools.database.Signal):
             unit=unit,
             choices=choices,
             comment=comment,
-            is_float=is_float,
+            is_float=self.is_float,
             decimal=decimal,
         )
+
+    @property
+    def datatype(self):
+        """Convert cantools.Signal attributes to ASAM2 datatype."""
+        v = {
+            "length": self.length,
+            "is_signed": self.is_signed,
+            "is_float": self.is_float,
+        }
+        return next(key for key, value in self.datatypes.items() if value == v)
+
+    @datatype.setter
+    def datatype(self, value):
+        self.length = self.datatypes[value]["length"]
+        self.is_signed = self.datatypes[value]["is_signed"]
+        self.is_float = self.datatypes[value]["is_float"]
 
     @property
     def address(self):
@@ -155,13 +183,8 @@ class Element(cantools.database.Signal):
 
     @property
     def size(self):
-        """Get the element's length in bytes."""
-        # cantool.database.Signal.length is in bits
-        return self._length // 8
-
-    @size.setter
-    def size(self, value):
-        self._length = value * 8
+        """Get the element's size in bytes."""
+        return self.length // 8
 
     @property
     def start_byte(self):

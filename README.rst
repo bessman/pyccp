@@ -44,6 +44,7 @@ Example usage
 .. code:: python
 
    import can
+   from pya2l import DB, model
    import pyccp
    import logging
    import time
@@ -55,35 +56,29 @@ Example usage
    # Configure CAN-bus
    bus = can.Bus(bustype="socketcan", channel="can0", bitrate=500000)
 
+   # Load A2L-file
+   db = DB()
+   sql_session = db.import_a2l("engine_ecu.a2l")
+
    # Configure master node
    master = pyccp.Master(transport=bus, cro_id=0x321, dto_id=0x7E1)
 
    # Configure DAQ session
-   session = pyccp.DAQSession(
-          master=master,
-          station_address=0x37,
-          )
+   daq_session = pyccp.DAQSession(master=master, station_address=0x37)
 
-   # Specify some variables for logging
-   diff_pressure = pyccp.Element(
-          name="diffP",
-          size=4,
-          address=0x4000AA56,
-          scale=0.001,
-          )
-   coolant_temp = pyccp.Element(
-          name="cTemp",
-          size=2,
-          address=0x4000F090,
-          is_signed=True,
-          )
+   # Select some measurement signals to log.
+   measurements = sql_session.query(model.Measurement)
+   temperatures = measurements.filter(model.Measurement.name.like("%temp%")).all()
+   pressures = measurements.filter(model.Measurement.name.like("%pressure%")).all()
 
    # Start DAQ session
-   session.initialize(elements=[diff_pressure, cooland_temp])
-   session.run()
+   daq_session.initialize(measurements=temperatures+pressures)
+   daq_session.run()
 
    # Log for 10 seconds
    time.sleep(10)
-   session.stop()
+   daq_session.stop()
+   sql_session.close()
 
-Currently, information such as CAN IDs and memory addresses must be entered manually.
+Currently, information such as the slave's station address and CAN IDs must be
+entered manually.
