@@ -59,13 +59,10 @@ class MessageSorter(can.Listener):
             logger.debug("Received EVM:  %s", return_code)
 
         elif messages.is_daq(msg=msg, dto_id=self.dto_id):
-            msg = messages.DataAcquisitionMessage().from_can_message(msg)
+            msg = messages.DataAcquisitionMessage.from_can_message(msg)
             self._daq_queue.put(msg)
             odt_number = msg.data[messages.MessageByte.DTO_PID]
             logger.debug("Received DAQ#%s", odt_number)
-
-            for k, v in msg.decode().items():
-                logger.info("{},{},{}".format(msg.timestamp, k, v))
 
         elif messages.is_cro(msg=msg, cro_id=self.cro_id):
             msg = messages.CommandReceiveObject().from_can_message(msg)

@@ -5,9 +5,8 @@
 
 from typing import List
 import enum
-import os
 
-from pya2l import DB, model
+from pya2l import model
 
 from ..error import CCPError
 from ..master import Master
@@ -29,6 +28,7 @@ class DAQSession:
 
     def __init__(self, master: Master, station_address: int):
         self.master = master
+        self.get = self.master._queue.get_data_acquisition_message
         self.station_address = station_address
         self.odts = []
         self.daq_lists = []
