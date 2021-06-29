@@ -70,8 +70,11 @@ COMMAND_DISPATCH = {
     # CommandCodes.GET_S_STATUS: getSStatus,
     # CommandCodes.BUILD_CHKSUM: buildChksum,
     # CommandCodes.CLEAR_MEMORY: clearMemory,
+    CommandCodes.CLEAR_MEMORY: COMMANDS_DB.get_message_by_name("clear_memory"),
     # CommandCodes.PROGRAM: program,
+    CommandCodes.PROGRAM: COMMANDS_DB.get_message_by_name("program"),
     # CommandCodes.PROGRAM_6: program6,
+    CommandCodes.PROGRAM_6: COMMANDS_DB.get_message_by_name("program6"),
     # CommandCodes.MOVE: move,
     # CommandCodes.TEST: test,
     # CommandCodes.GET_ACTIVE_CAL_PAGE: getActiveCalPage,
@@ -87,6 +90,7 @@ class CommandReceiveObject(CCPMessage):
         arbitration_id: int = 0,
         command_code: CommandCodes = None,
         ctr: int = 0,
+        is_extended_id: bool = True,
         **kwargs: int,
     ):
         """Create a CommandReceiveObject.
@@ -107,11 +111,10 @@ class CommandReceiveObject(CCPMessage):
         self.data = bytearray(MAX_DLC)
         self.command_code = command_code
         self.ctr = ctr
-
         if command_code is not None:
             self.data = self.encode(**kwargs)
 
-        super().__init__(arbitration_id=arbitration_id, data=self.data)
+        super().__init__(arbitration_id=arbitration_id, data=self.data,is_extended_id=is_extended_id)
 
     def encode(self, **kwargs: int) -> bytes:
         """Encode keyword arguments to bytes.

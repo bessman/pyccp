@@ -33,17 +33,18 @@ class Master:
     """A CAN Calibration Protocol (CCP) master node."""
 
     def __init__(
-        self, transport: can.Bus, cro_id: int, dto_id: int,
+        self, transport: can.Bus, cro_id: int, dto_id: int, is_extended_id: bool
     ):
         self.slaveConnections = {}
         self.cro_id = cro_id
         self.dto_id = dto_id
+        self.is_extended_id = is_extended_id
         self._transport = transport
         # Receive both DTOs and CROs, the latter in case local echo is enabled.
         self._transport.set_filters(
             [
-                {"can_id": dto_id, "can_mask": 0x1FFFFFFF, "extended": True},
-                {"can_id": cro_id, "can_mask": 0x1FFFFFFF, "extended": True},
+                {"can_id": dto_id, "can_mask": 0x1FFFFFFF, "extended": self.is_extended_id},
+                {"can_id": cro_id, "can_mask": 0x1FFFFFFF, "extended": self.is_extended_id},
             ]
         )
         self._queue = MessageSorter(dto_id, cro_id)
@@ -54,6 +55,7 @@ class Master:
         cro = CommandReceiveObject(
             arbitration_id=self.cro_id,
             command_code=command_code,
+            is_extended_id=self.is_extended_id,
             ctr=self.ctr,
             **kwargs
         )
@@ -79,11 +81,11 @@ class Master:
             Five data bytes.
 
         """
+        
         try:
             crm = self._queue.get_command_return_message()
         except Empty:
             raise CCPError("No reply from slave")
-
         if crm.ctr == self.ctr:
             self.ctr = (self.ctr + 1) % 0x100
         else:
@@ -396,14 +398,47 @@ class Master:
     def build_chksum(self):
         raise NotImplementedError  # pragma: no cover
 
-    def clear_memory(self):
-        raise NotImplementedError  # pragma: no cover
+    def clear_memory(self,size: int):
+        self._send(CommandCodes.CLEAR_MEMORY,size=size)
+        self._receive()
 
-    def program(self):
-        raise NotImplementedError  # pragma: no cover
+    def program(self, size: int, data: int) -> tuple:
+        """Program data from master to slave.
 
-    def program6(self):
-        raise NotImplementedError  # pragma: no cover
+        Parameters
+        ----------
+        size : int
+            Number of bytes to be transferred (0 - 5).
+        data : int
+            Data to be written to MTA0 in the slave.
+
+        Returns
+        -------
+        tuple
+             mta0_ext:  Current MTA0 extension,
+             mta0_addr: Current MTA0 address
+        """
+        self._send(CommandCodes.PROGRAM, size=size, data=data)
+        data = self._receive()
+        return data[0], data[1:]
+
+    def program6(self, data: int) -> tuple:
+        """Program 6 bytes of data from master to slave.
+
+        Parameters
+        ----------
+        data : int
+            Data to be written to MTA0 in the slave.
+
+        Returns
+        -------
+        tuple
+             mta0_ext:  Current MTA0 extension,
+             mta0_addr: Current MTA0 address
+        """
+        self._send(CommandCodes.PROGRAM_6, size=6, data=data)
+        data = self._receive()
+        return data[0], data[1:]
 
     def move(self):
         raise NotImplementedError  # pragma: no cover

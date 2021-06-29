@@ -23,7 +23,7 @@ class DataTransmissionObject(CCPMessage):
     """
 
     def __init__(
-        self, arbitration_id: int, pid: Union[DTOType, int], data: bytearray,
+        self, arbitration_id: int, pid: Union[DTOType, int], data: bytearray, is_extended_id: bool = True,
     ):
         """Create a DTO.
 
@@ -44,7 +44,7 @@ class DataTransmissionObject(CCPMessage):
         # is sometimes (?) shared between instances.
         self.data = deepcopy(data)
         self.pid = pid
-        super().__init__(arbitration_id=arbitration_id, data=self.data)
+        super().__init__(arbitration_id=arbitration_id, data=self.data,is_extended_id=is_extended_id)
 
     @property
     def pid(self) -> Union[DTOType, int]:

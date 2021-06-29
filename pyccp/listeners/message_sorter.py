@@ -16,11 +16,11 @@ class MessageSorter(can.Listener):
     """A can.Listener which sorts incoming CCP messages by type."""
 
     def __init__(
-        self, dto_id: int, cro_id: int,
+        self, dto_id: int, cro_id: int, is_extended_id: bool = True,
     ):
         self.dto_id = dto_id
         self.cro_id = cro_id
-
+        self.is_extended_id = is_extended_id
         self._crm_queue = queue.Queue()
         self._evm_queue = queue.Queue()
         self._daq_queue = queue.Queue()
@@ -73,7 +73,7 @@ class MessageSorter(can.Listener):
             # CROs are logged by master
 
     def get_command_return_message(
-        self, timeout: float = 0.5
+        self, timeout: float = 1.5
     ) -> messages.CommandReturnMessage:
         """Return the first CRM in the queue.
 
