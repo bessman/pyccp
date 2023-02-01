@@ -6,7 +6,8 @@ from setuptools import setup, find_packages
 setup(
     name="pyccp",
     version="0.1.0",
-    packages=find_packages(),
+    packages=["pyccp"],
+    package_dir={"": "src"},
     install_requires=[
         "python-can",
         "cantools",
