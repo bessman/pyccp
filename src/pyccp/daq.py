@@ -1,7 +1,7 @@
 import decimal
 import enum
 import logging
-from typing import Dict, List, Union
+from typing import Callable, Dict, List, Union
 
 import cantools
 
@@ -37,6 +37,7 @@ class Element(cantools.database.can.Signal):
         address: int,
         extension: int = 0,
         event_channel: int = 0,
+        callback: Union[Callable[[float, int], None], None] = None,
         byte_order: str = "little_endian",
         is_signed: bool = False,
         initial: Union[int, float] = None,
@@ -70,6 +71,7 @@ class Element(cantools.database.can.Signal):
         self.address = address
         self.extension = extension
         self.event_channel = event_channel
+        self.callback = callback
         super().__init__(
             name=name,
             start=0,
@@ -139,12 +141,19 @@ class ObjectDescriptorTable(cantools.database.Message):
         self._number = number
         self.elements = elements
         self._assign_element_numbers()
+        self._callbacks = {e.name: e.callback for e in elements if e.callback}
         super().__init__(
             frame_id=number,
             name=str(number),
             length=length,
             signals=self.elements,
         )
+
+    def decode(self, data, **kwargs):
+        decoded = super().decode(data, **kwargs)
+        for k, v in decoded.items():
+            if k in self._callbacks:
+                self._callbacks[k](v)
 
     def _assign_element_numbers(self):
         start_byte = 0
