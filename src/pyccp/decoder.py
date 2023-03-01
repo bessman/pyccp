@@ -1,7 +1,7 @@
 import enum
 import queue
 import logging
-from typing import Dict, List
+from typing import Callable, Dict, List, Union
 
 import can
 import cantools
@@ -60,11 +60,7 @@ class CRMDecoder(can.Listener):
 class DAQDecoder(can.Listener):
     """Decode incoming messages."""
 
-    def __init__(
-        self,
-        dto_id: int,
-        decoders: List[cantools.database.can.Message],
-    ):
+    def __init__(self, dto_id: int, decoders: List[cantools.database.can.Message]):
         self.dto_id = dto_id
         self.decoders = decoders
         self.queue = queue.Queue()
@@ -80,6 +76,11 @@ class DAQDecoder(can.Listener):
             msg.data[MessageByte.DTO_PID] in (odt.number for odt in self.decoders)
         ):
             pid = msg.data[MessageByte.DTO_PID]
-            decoded = self.decoders[pid].decode(msg.data)
+            decoder = self.decoders[pid]
+            decoded = decoder.decode(msg.data[MessageByte.DAQ_DATA_START :])
+            for element_name, value in decoded.items():
+                element = decoder.elements[element_name]
+                if element.callback:
+                    element.callback(element, decoded)
             self.queue.put(decoded)
             _logger.debug(f"Received DAQ#{pid}: {decoded}")

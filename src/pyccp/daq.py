@@ -139,25 +139,18 @@ class ObjectDescriptorTable(cantools.database.Message):
         None.
         """
         self._number = number
-        self.elements = elements
+        self.elements = {e.name: e for e in elements}
         self._assign_element_numbers()
-        self._callbacks = {e.name: e.callback for e in elements if e.callback}
         super().__init__(
             frame_id=number,
             name=str(number),
             length=length,
-            signals=self.elements,
+            signals=elements,
         )
-
-    def decode(self, data, **kwargs):
-        decoded = super().decode(data, **kwargs)
-        for k, v in decoded.items():
-            if k in self._callbacks:
-                self._callbacks[k](v)
 
     def _assign_element_numbers(self):
         start_byte = 0
-        for e in self.elements:
+        for e in self.elements.values():
             e.start_byte = start_byte
             start_byte += e.size
 
@@ -165,15 +158,6 @@ class ObjectDescriptorTable(cantools.database.Message):
     def number(self):
         """Get the ODT number."""
         return self._number
-
-    @property
-    def elements(self):
-        """Get Element in the ODT."""
-        return self._signals
-
-    @elements.setter
-    def elements(self, value):
-        self._signals = value
 
 
 class DAQList:
@@ -194,13 +178,13 @@ class DAQList:
         self.apply()
 
     def update(self):
-        elements = (e for odt in self.odts for e in odt.elements)
+        elements = (e for odt in self.odts for e in list(odt.elements.values()))
         self.event_channels = {e.event_channel for e in elements}
 
     def apply(self):
         self.update()
         for i, odt in enumerate(self.odts):
-            for j, e in enumerate(odt.elements):
+            for j, e in enumerate(list(odt.elements.values())):
                 self._node.set_daq_ptr(
                     daq_list_number=self.number,
                     odt_number=i,
