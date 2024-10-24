@@ -1,7 +1,7 @@
 import decimal
 import enum
 import logging
-from typing import Callable, Dict, List, Union
+from typing import Callable, Dict, Iterator, List, Union
 
 import cantools
 
@@ -37,7 +37,7 @@ class Element(cantools.database.can.Signal):
         address: int,
         extension: int = 0,
         event_channel: int = 0,
-        callback: Union[Callable[[float, int], None], None] = None,
+        on_receive: Union[Callable[[float, int], None], None] = None,
         byte_order: str = "little_endian",
         is_signed: bool = False,
         initial: Union[int, float] = None,
@@ -71,7 +71,7 @@ class Element(cantools.database.can.Signal):
         self.address = address
         self.extension = extension
         self.event_channel = event_channel
-        self.callback = callback
+        self.on_receive = on_receive
         super().__init__(
             name=name,
             start=0,
@@ -223,6 +223,10 @@ class DAQSession:
         self._node.add_listener(self._decoder)
         self.queue = self._decoder.queue
         self._running: bool = False
+
+    def __iter__(self) -> Iterator[Dict[str, float]]:
+        for d in self._decoder:
+            yield d
 
     def configure(self, elements: List[Element]) -> None:
         self._elements = elements

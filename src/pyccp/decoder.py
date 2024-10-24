@@ -1,7 +1,7 @@
 import enum
 import queue
 import logging
-from typing import Callable, Dict, List, Union
+from typing import Dict, Iterator, List
 
 import can
 import cantools
@@ -22,6 +22,15 @@ class MessageByte(enum.IntEnum):
 class DTOType(enum.IntEnum):
     COMMAND_RETURN_MESSAGE = 0xFF
     EVENT_MESSAGE = 0xFE
+
+
+class IterQueue(queue.Queue):
+    def __iter__(self) -> Iterator:
+        while True:
+            try:
+                yield self.get(timeout=1)
+            except queue.Empty:
+                pass
 
 
 class CRMDecoder(can.Listener):
@@ -63,7 +72,7 @@ class DAQDecoder(can.Listener):
     def __init__(self, dto_id: int, decoders: List[cantools.database.can.Message]):
         self.dto_id = dto_id
         self.decoders = decoders
-        self.queue = queue.Queue()
+        self.queue = IterQueue()
 
     def on_message_received(self, msg: can.Message) -> None:
         """Decode an incoming message.
@@ -80,7 +89,7 @@ class DAQDecoder(can.Listener):
             decoded = decoder.decode(msg.data[MessageByte.DAQ_DATA_START :])
             for element_name, value in decoded.items():
                 element = decoder.elements[element_name]
-                if element.callback:
-                    element.callback(element, decoded)
+                if element.on_receive:
+                    element.on_receive(element, value)
             self.queue.put(decoded)
             _logger.debug(f"Received DAQ#{pid}: {decoded}")

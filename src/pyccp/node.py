@@ -169,7 +169,7 @@ class Node:
         _logger.debug(signals)
 
         try:
-            crm = self._decoder.queue.get(timeout=0.5)
+            crm = self._decoder.queue.get(timeout=1)
         except queue.Empty as exc:
             raise CCPError("No reply from slave") from exc
 
@@ -377,16 +377,17 @@ class Node:
             0 temporary,
             1 permanent.
         """
-        self._transceive(
-            CommandCodes.DISCONNECT,
-            permanent=permanent,
-            station_address=self.station_address,
-        )
-        if permanent:
-            self._notifier.stop()
-            self.status = ConnectionStatus.DISCONNECTED_PERMANENT
-        else:
+        try:
+            self._transceive(
+                CommandCodes.DISCONNECT,
+                permanent=permanent,
+                station_address=self.station_address,
+            )
+        finally:
             self.status = ConnectionStatus.DISCONNECTED
+            if permanent:
+                self._notifier.stop()
+                self.status = ConnectionStatus.DISCONNECTED_PERMANENT
 
     # #
     # Optional Commands
