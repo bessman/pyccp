@@ -1,0 +1,67 @@
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "pyccp"
+authors = [{name = "Alexander Bessman", email = "alexander.bessman@scania.com"}]
+dynamic = ["version", "description"]
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+dependencies = [
+    "python-can",
+    "cantools",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+]
+keywords = [
+    "ccp",
+    "can",
+    "automotive",
+    "autosar",
+]
+
+[project.urls]
+Home = "https://github.com/bessman/pyccp/"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "coverage",
+]
+dev = [
+    "black",
+    "isort",
+    "mypy",
+    "ruff",
+    "tox",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D203",  # one-blank-line-before-class
+    "D213",  # multi-line-summary-second-line
+    "G004",  # logging-f-string
+    "N818",  # error-suffix-on-exception-name
+    "S101",  # assert
+    "ANN101",  # missing-type-self
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/{tests,docs}/*" = ["ALL"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
