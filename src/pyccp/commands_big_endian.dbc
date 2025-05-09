@@ -116,6 +116,15 @@ BO_ 33 action_service: 8 Vector__XXX
  SG_ ctr : 15|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ command_code : 7|8@0+ (1,0) [0|0] "" Vector__XXX
 
+BO_ 13 get_s_status: 8 Vector__XXX
+ SG_ ctr : 15|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ command_code : 7|8@0+ (1,0) [0|0] "" Vector__XXX
+
+BO_ 8 start_stop_all: 8 Vector__XXX
+ SG_ mode : 23|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ ctr : 15|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ command_code : 7|8@0+ (1,0) [0|0] "" Vector__XXX
+
 
 
 

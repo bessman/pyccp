@@ -42,10 +42,10 @@ BO_ 1 connect: 8 Vector__XXX
  SG_ pid : 7|8@0+ (1,0) [0|0] "" Vector__XXX
 
 BO_ 23 exchange_id: 8 Vector__XXX
- SG_ resource_protection : 55|8@0+ (1,0) [0|0] "" Vector__XXX
- SG_ resource_availability : 47|8@0+ (1,0) [0|0] "" Vector__XXX
- SG_ id_type : 39|8@0+ (1,0) [0|0] "" Vector__XXX
- SG_ id_length : 31|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ protection : 55|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ availability : 47|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ dtype : 39|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ length : 31|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 23|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ return_code : 15|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ pid : 7|8@0+ (1,0) [0|0] "" Vector__XXX
@@ -100,7 +100,7 @@ BO_ 17 select_cal_page: 8 Vector__XXX
  SG_ pid : 7|8@0+ (1,0) [0|0] "" Vector__XXX
 
 BO_ 20 get_daq_size: 8 Vector__XXX
- SG_ first_odt_number : 39|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ first_pid : 39|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ size : 31|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 23|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ return_code : 15|8@0+ (1,0) [0|0] "" Vector__XXX
@@ -178,8 +178,8 @@ BO_ 32 diag_service: 8 Vector__XXX
  SG_ pid : 7|8@0+ (1,0) [0|0] "" Vector__XXX
 
 BO_ 33 action_service: 8 Vector__XXX
- SG_ type : 39|8@0+ (1,0) [0|0] "" Vector__XXX
- SG_ size : 31|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ dtype : 39|8@0+ (1,0) [0|0] "" Vector__XXX
+ SG_ length : 31|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ ctr : 23|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ return_code : 15|8@0+ (1,0) [0|0] "" Vector__XXX
  SG_ pid : 7|8@0+ (1,0) [0|0] "" Vector__XXX

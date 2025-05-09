@@ -1,320 +1,581 @@
-import decimal
-import enum
+"""Data Acquisition (DAQ) over CCP."""
+
+from __future__ import annotations
+
 import logging
-from typing import Callable, Dict, Iterator, List, Union
+from collections.abc import Sequence
+from dataclasses import dataclass
+from enum import IntEnum
+from itertools import islice
+from typing import Callable, Literal, Optional, overload
 
+import can
 import cantools
+from cantools.typechecking import DecodeResultType
 
-from pyccp.decoder import DAQDecoder
-from pyccp.node import Node
+import pyccp
 
 
 _logger = logging.getLogger(__name__)
 
 
-class SessionStatus(enum.IntEnum):
-    """Status bits for the SET_S_STATUS command."""
-
-    CAL = 0x01
-    DAQ = 0x02
-    RESUME = 0x04
-    STORE = 0x40
-    RUN = 0x80
-
-
-class DAQMode(enum.IntEnum):
-    STOP = 0
-    START = 1
+class DAQMode(IntEnum):
+    """DAQ list mode.
+    
+    STOP: DAQ list inactive.
+    START: DAQ active.
+    SYNC: DAQ list ready for synchronized start.
+    """
+    STOP = 0x00
+    START = 0x01
+    SYNC = 0x02
 
 
-class Element(cantools.database.can.Signal):
-    """Elements hold pointers to variables in the slave device."""
+DAQCallback = Callable[[float, DecodeResultType], None]
+"""A DAQCallback may be set on an Element. When that Element is received in a DAQ
+   session, the callback is called with the following arguments:
+       timestamp : float
+           The timestamp of the DAQ-DTO CAN message holding the Element.
+       decoded : dict[str, int | float, str]
+           A dictionary with a single key-value pair of "element_name": decoded_value.
+"""
+
+
+@dataclass(frozen=True)
+class Element:
+    """An Element is a pointer to a variable in the slave device.
+
+    Parameters
+    ----------
+    name : str
+        A unique name identifying the variable.
+    address : int
+        Address of the variable. Four bytes.
+    size : {1, 2, 4}, default=1
+        Size of the variable in bytes
+    extension : int, default=0
+        Address extension. One byte.
+    is_signed : bool, default=False
+    is_float : bool, default=False
+    scale : int, default=1
+    offset : int, default=0
+    choices : dict[int, str], default=None
+        Mapping of integer values to strings.
+    on_received : DAQCallback, default None
+        An optional callback function which is called when this element is received in a
+        DAQ session.
+    """
+
+    name: str
+    address: int
+    size: Literal[1, 2, 4] = 1
+    extension: int = 0
+    is_signed: bool = False
+    is_float: bool = False
+    scale: int | float = 1
+    offset: int | float = 0
+    choices: Optional[dict[int, str]] = None
+    on_received: Optional[DAQCallback] = None
+
+
+class _Element(cantools.database.can.Signal):
+    def __init__(
+            self, 
+            on_received: Optional[DAQCallback] = None, 
+            *args, 
+            **kwargs
+        ) -> None:
+        super().__init__(*args, **kwargs)
+        self._on_received = on_received
+    
+    @property
+    def on_received(self) -> DAQCallback:
+        def default(timestamp: float, decoded: DecodeResultType):
+            pass
+        return self._on_received or default
+
+
+class ODT:
+    """Object Descriptor Tables (ODT) describe the layout of DAQ-DTO messages.
+
+    A DAQ-DTO message contains a PID (1 byte) and an ODT (7 bytes). The PID identifies
+    the ODT that follows it. The ODT contains Element values that the slave has been
+    configured to transmit during a DAQ session.
+    
+    Parameters
+    ----------
+    elements : list[Element]
+    """
+
+    MAX_SIZE = 7
+
+    def __init__(self, elements: list[Element]) -> None:
+        if sum(e.size for e in elements) > ODT.MAX_SIZE:
+            raise pyccp.CCPError(
+                "Total size of elements in ODT may not exceed seven bytes"
+            )
+
+        self._elements = {}
+        previous = None
+
+        for e in elements:
+            key = list(self._elements.keys())[-1] + previous.size if previous else 0
+            self._elements[key] = e
+            previous = e
+
+    def __repr__(self) -> str:
+        return f"ODT({self.elements})"
+
+    @property
+    def elements(self) -> dict[int, Element]:
+        """Elements in ODT as a dictionary of location_in_odt: Element."""
+        return self._elements
+
+
+class _DAQListener(can.Listener):
+    """Listen for and decode incoming DAQ messages.
+
+    Parameters
+    ----------
+    daq_dto : cantools.database.can.Message
+        A cantools Message instance used to decode received DAQ DTOs.
+    """
 
     def __init__(
         self,
-        name: str,
-        size: int,
-        address: int,
-        extension: int = 0,
-        event_channel: int = 0,
-        on_receive: Union[Callable[[float, int], None], None] = None,
-        byte_order: str = "little_endian",
-        is_signed: bool = False,
-        initial: Union[int, float] = None,
-        scale: int = 1,
-        offset: Union[int, float] = 0,
-        minimum: Union[int, float] = None,
-        maximum: Union[int, float] = None,
-        unit: str = None,
-        choices: enum.IntEnum = None,
-        comment: str = None,
-        is_float: bool = False,
-        decimal: decimal.Decimal = None,
-    ):
-        """Create a DAQ Element.
+        daq_dto: cantools.database.can.Message,
+    ) -> None:
+        self.daq_dto = daq_dto
+
+    @property
+    def _known_pids(self) -> set[int]:
+        return set(
+            [
+                s.multiplexer_ids[0]
+                for s in self.daq_dto.signals
+                if s.multiplexer_ids is not None
+            ]
+        )
+
+    def on_message_received(self, msg: can.Message) -> None:
+        """Decode an incoming message.
 
         Parameters
         ----------
-        name : str
-            Name of the slave internal variable.
-        size : int
-            Size of the variable in bytes.
-        address : int
-            Memory address of the variable in the slave.
-        extension : int, optional
-            Address extension in slave. The default is 0.
-
-        Returns
-        -------
-        None.
+        msg : can.Message
         """
-        self.address = address
-        self.extension = extension
-        self.event_channel = event_channel
-        self.on_receive = on_receive
-        super().__init__(
-            name=name,
-            start=0,
-            length=size * 8,  # Bytes -> bits
-            byte_order=byte_order,
-            is_signed=is_signed,
-            initial=initial,
-            scale=scale,
-            offset=offset,
-            minimum=minimum,
-            maximum=maximum,
-            unit=unit,
-            choices=choices,
-            comment=comment,
-            is_float=is_float,
-            decimal=decimal,
-        )
+        if (
+            msg.arbitration_id == self.daq_dto.frame_id
+            and msg.data[pyccp.DTO_PID_BYTE] in self._known_pids
+        ):
+            _logger.debug(f"{self} received DAQ-DTO: {msg}")
+            decoded = self.daq_dto.decode(msg.data)
+            _logger.debug(f"{self} decoded DAQ-DTO: {decoded}")
+            decoded.pop("pid")
 
-    @property
-    def size(self):
-        """Get the element's length in bytes."""
-        # cantool.database.Signal.length is in bits
-        return self.length // 8
+            for k, v in decoded.items():
+                if isinstance(e := self.daq_dto.get_signal_by_name(k), _Element):
+                    e.on_received(msg.timestamp, {k: v})
 
-    @size.setter
-    def size(self, value):
-        self.length = value * 8
-
-    @property
-    def start_byte(self):
-        """Translate from starting bit to starting byte."""
-        return self.start // 8
-
-    @start_byte.setter
-    def start_byte(self, value):
-        """Translate from starting byte to starting bit.
-
-        See cantools.database.can.Signal for details on the byte order stuff.
-        """
-        self.start = value * 8 + 7 if self.byte_order == "big_endian" else value * 8
+    def __repr__(self) -> str:
+        return f"DAQListener(DTO 0x{self.daq_dto.frame_id:X}, PIDs {self._known_pids})"
 
 
-class ObjectDescriptorTable(cantools.database.Message):
-    """Object Descriptor Tables (ODT) describe the layout of DAQ messages."""
+class DAQList(Sequence):
+    """Model of a DAQ list on the slave.
+
+    Parameters
+    ----------
+    number : int
+        DAQ list number.
+    size : int
+        Number of ODTs the DAQ list can hold.
+    first_pid : int
+        PID of the DTO frame containing the first ODT in the DAQ list.
+    """
 
     def __init__(
         self,
-        elements: List[Element],
+        node: pyccp.CCPSlave,
         number: int,
-        length: int = 7,
+        size: int,
+        first_pid: int,
     ):
-        """Create an ODT.
-
-        Parameters
-        ----------
-        elements : list of Element
-            List of Element objects which point to slave internal data.
-        number : int
-            ODT number.
-        length : int, optional
-            Number of bytes in ODT. The default is 7.
-
-        Returns
-        -------
-        None.
-        """
+        self._node = node
         self._number = number
-        self.elements = {e.name: e for e in elements}
-        self._assign_element_numbers()
-        super().__init__(
-            frame_id=number,
-            name=str(number),
-            length=length,
-            signals=elements,
-        )
-
-    def _assign_element_numbers(self):
-        start_byte = 0
-        for e in self.elements.values():
-            e.start_byte = start_byte
-            start_byte += e.size
+        self._size = size
+        self._first_pid = first_pid
+        self._mode = DAQMode.STOP
+        self._event_channel: int | None = None
+        self._odts = []
+        self._listener = _DAQListener(self._daq_dto)
+        self.node.add_listener(self._listener)
 
     @property
-    def number(self):
-        """Get the ODT number."""
+    def node(self) -> pyccp.CCPSlave:
+        """The slave node to which this DAQ list belongs. (read only)"""
+        return self._node
+
+    @property
+    def number(self) -> int:
+        """DAQ list number. (read only)"""
         return self._number
 
-
-class DAQList:
-    def __init__(
-        self,
-        node: Node,
-        number: int,
-        size: int,
-        first_odt_number: int,
-        odts: Union[List[ObjectDescriptorTable], None] = None,
-    ):
-        self._node = node
-        self.number = number
-        self.size = size
-        self.first_odt_number = first_odt_number
-        self.odts = [] if odts is None else odts
-        self.update()
-        self.apply()
-
-    def update(self):
-        elements = (e for odt in self.odts for e in list(odt.elements.values()))
-        self.event_channels = {e.event_channel for e in elements}
-
-    def apply(self):
-        self.update()
-        for i, odt in enumerate(self.odts):
-            for j, e in enumerate(list(odt.elements.values())):
-                self._node.set_daq_ptr(
-                    daq_list_number=self.number,
-                    odt_number=i,
-                    element_number=j,
-                )
-                self._node.write_daq(e.size, e.extension, e.address)
-
-    def start(self):
-        self._start_stop(DAQMode.START)
-
-    def stop(self):
-        self._start_stop(DAQMode.STOP)
-
-    def _start_stop(self, start_or_stop: DAQMode) -> None:
-        if self.odts:
-            for event_channel in self.event_channels:
-                last = min(self.first_odt_number + self.size, len(self.odts)) - 1
-                self._node.start_stop(
-                    mode=start_or_stop,
-                    daq_list_number=self.number,
-                    last_odt_number=last,
-                    event_channel=event_channel,
-                )
-
-
-class DAQSession:
-    """During a DAQ session, the node periodically sends internal data."""
-
-    def __init__(self, node: Node):
-        self._node = node
-        self._elements: List[Element] = []
-        self._daq_lists: List[DAQList] = []
-        self._get_daq_lists()
-        self._odts: List[ObjectDescriptorTable] = []
-        self._decoder = DAQDecoder(node.dto_id, self._odts)
-        self._node.add_listener(self._decoder)
-        self.queue = self._decoder.queue
-        self._running: bool = False
-
-    def __iter__(self) -> Iterator[Dict[str, float]]:
-        for d in self._decoder:
-            yield d
-
-    def configure(self, elements: List[Element]) -> None:
-        self._elements = elements
-        self._pack_elements()
-        self._decoder.decoders = self._odts
-        self._node.set_s_status(status_bits=SessionStatus.CAL)
-        for daq_list in self._daq_lists:
-            daq_list.apply()
-
-    def start(self):
-        """Start the DAQ session."""
-        if self._running:
-            return
-
-        self._node.set_s_status(status_bits=SessionStatus.DAQ)
-
-        for daq_list in self._daq_lists:
-            daq_list.start()
-
-        self._running = True
-
-    def stop(self):
-        """Stop the DAQ session."""
-        if not self._running:
-            return
-        for daq_list in self._daq_lists:
-            daq_list.stop()
-        self._running = False
+    @property
+    def size(self) -> int:
+        """Number of ODTs the DAQ list can hold.. (read only)"""
+        return self._size
 
     @property
-    def running(self) -> bool:
-        return self._running
+    def first_pid(self) -> int:
+        """PID of the DTO frame containing the first ODT in the DAQ list. (read only)
+        
+        PIDs of DTOs holding subsequent ODTs increment by one per ODT.
+        """
+        return self._first_pid
 
-    def _pack_elements(self, volume: int = 7) -> Dict[int, List[List[Element]]]:
-        """Pack elements according to the First Fit Descending (FFD) algorithm.
+    @property
+    def mode(self) -> DAQMode:
+        """DAQ list mode, either STOP or START. (read only)"""
+        return self._mode
 
-        See https://en.wikipedia.org/wiki/Bin_packing_problem
+    @property
+    def event_channel(self) -> int | None:
+        """Currently active event channel. (read only)"""
+        return self._event_channel
+
+    @property
+    def _pid(self) -> cantools.database.can.Signal:
+        return cantools.database.can.Signal(
+            name="pid",
+            start=7 * (self.node.byte_order == "big_endian"),
+            length=8,
+            byte_order=self.node.byte_order,
+            is_multiplexer=True,
+        )
+
+    @overload
+    def __getitem__(self, idx: int) -> ODT:
+        ...
+    @overload
+    def __getitem__(self, idx: slice) -> list[ODT]:
+        ...
+    def __getitem__(self, idx):
+        return self._odts[idx]
+
+    @overload
+    def __setitem__(self, idx: int, value: ODT) -> None:
+        ...
+    @overload
+    def __setitem__(self, idx: slice, value: list[ODT]) -> None:
+        ...
+    def __setitem__(self, idx, value):
+        if self.mode == DAQMode.START:
+            raise pyccp.CCPError("Cannot modify active DAQ list")
+
+        if isinstance(idx, slice):
+            start = idx.start or 0
+            
+            if len(value) > self.size - start:
+                raise IndexError(f"ODTs do not fit in DAQ list (size={self.size})")
+            
+            for i, v in zip(range(*idx.indices(len(self))), value):
+                # recurse
+                self[i] = v
+
+            return
+
+        self._odts[idx] = value
+        self._listener.daq_dto = self._daq_dto
+
+        for i, e in enumerate(value.elements.values()):
+            _logger.debug(f"Writing element to DAQList#{self.number}[{idx}][{i}]")
+            self.node.set_daq_ptr(
+                daq_list_number=self.number,
+                odt_number=idx,
+                element_number=i,
+            )
+            self.node.write_daq(e.size, e.extension, e.address)
+
+    def __len__(self) -> int:
+        return len(self._odts)
+
+    def __repr__(self) -> str:
+        return (
+            f"DAQList#{self.number}(mode={self.mode.name}, "
+            f"first_pid={self.first_pid}, "
+            f"length={self.size}) "
+            f"{self._odts}"
+        )
+    
+    def append(self, value: ODT) -> None:
+        """Append an ODT to DAQ list.
+        
+        Raises
+        ------
+        IndexError
+            If DAQ list is full.
+        """
+        if len(self) + 1 > self.size:
+            raise IndexError(f"DAQ list full (size={self.size})")
+        self._odts.append(None)
+        self[-1] = value
+    
+    def extend(self, value: list[ODT]) -> None:
+        """Extend DAQ list with a list of ODTs.
+        
+        Raises
+        ------
+        IndexError
+            If the total length of the current DAQ list plus the length of the new ODTs
+            would exceed the DAQ list size.
+        """
+        if len(self) + len(value) > self.size:
+            raise IndexError(f"ODTs do not fit in DAQ list (size={self.size})")
+        self._odts.extend([None] * len(value))
+        self[-len(value):] = value
+
+    def start(self, event_channel: int = 0, rate_prescaler: int = 1) -> None:
+        """Start data acquisition of this DAQ list.
+        
+        Parameters
+        ----------
+        event_channel : int, default=0
+            An implementation defined signal source.
+        rate_prescaler : int, default=1
+            Transmission rate is decreased by this factor.
+        """
+        self._event_channel = event_channel
+        self._start_stop(DAQMode.START, event_channel, rate_prescaler)
+
+    def stop(self) -> None:
+        """Stop data acquisition of this DAQ list."""
+        self._start_stop(DAQMode.STOP, event_channel=self.event_channel)
+        self._event_channel = None
+
+    def sync(self, event_channel: int = 0, rate_prescaler: int = 1) -> None:
+        """Prepare DAQ list for synchronized start."""
+        self._event_channel = event_channel
+        self._start_stop(DAQMode.SYNC, event_channel, rate_prescaler)
+
+    def _start_stop(
+        self,
+        mode: DAQMode,
+        event_channel: int = 0,
+        rate_prescaler: int = 1,
+    ) -> None:
+        if mode and all(odt is None for odt in self):
+            _logger.warning(f"Not starting empty DAQList#{self.number}")
+            return
+
+        self._mode = mode
+        last_odt_number = [i for i, odt in enumerate(self) if odt is not None][-1]
+        action = f"{('Stopp', 'Start', 'Sync')[mode]}ing"
+        odts = f"ODT{'s#0-' if last_odt_number else '#'}{last_odt_number}"
+        _logger.debug(
+            f"{action} {odts} of DAQList#{self.number} on channel#{event_channel}"
+        )
+
+        self.node.session_status |= pyccp.SessionStatus.DAQ
+        self.node.start_stop(
+            mode=mode,
+            daq_list_number=self.number,
+            last_odt_number=last_odt_number,
+            event_channel=event_channel,
+            rate_prescaler=rate_prescaler,
+        )
+
+    def clear(self) -> None:
+        """Remove all ODTs from DAQ list.
+        
+        CCP does not support removing individual ODTs.
+        """
+        _logger.debug(f"Clearing DAQList#{self.number}")
+        daq_metadata = self.node.get_daq_size(self.number)
+        self._size = daq_metadata.size
+        self._first_pid = daq_metadata.first_pid
+        self._mode = DAQMode.STOP
+        self._odts = []
+        self._listener.daq_dto = self._daq_dto
+
+    @property
+    def _daq_dto(self) -> cantools.database.can.Message:
+        """A cantools.database.can.Message able to decode all DAQ-DTOs of DAQ list."""
+        pid = cantools.database.can.Signal(
+            name="pid",
+            start=7 * (self.node.byte_order == "big_endian"),
+            length=8,
+            byte_order=self.node.byte_order,
+            is_multiplexer=True,
+        )
+        muxed = [
+            _Element(
+                name=e.name,
+                start=(k + 1) * 8 + 7 * (self.node.byte_order == "big_endian"),
+                length=e.size * 8,
+                byte_order=self.node.byte_order,
+                is_signed=e.is_signed,
+                conversion=cantools.database.conversion.BaseConversion.factory(
+                    choices=e.choices,
+                    is_float=e.is_float,
+                    scale=e.scale,
+                    offset=e.offset,
+                ),
+                multiplexer_signal="pid",
+                multiplexer_ids=[self.first_pid + i],
+                on_received = e.on_received,
+            )
+            for i, odt in enumerate(self) if odt is not None
+            for k, e in odt.elements.items()
+        ]
+
+        return cantools.database.can.Message(
+            name="DAQ_DTO",
+            frame_id=self.node.dto_id,
+            length=8,
+            signals=[pid] + muxed,
+        )
+
+    def pack_elements_into(self, elements: list[Element]) -> None:
+        """Pack elements into DAQ list.
+
+        Any already configured elements will be cleared.
 
         Parameters
         ----------
-        elements : List[Element]
-            List of element objects to the packed into ODTs.
-        volume : int, optional
-            The volume into which to pack the elements. Defaults to 7, which
-            is the maximum length of an ODT.
+        elements : list[Element]
+
+        Raises
+        ------
+        CCPError
+            If elements do not fit in DAQ list.
         """
-        packed = []
+        odts = pack_elements(elements)
+        
+        if len(odts) > self.size:
+            raise pyccp.CCPError("Elements to not fit in DAQ list")
+        
+        if self:
+            self.clear()
+        
+        self.extend(odts)
 
-        # Pack into bins.
-        sorted_elements = sorted(self._elements, reverse=True, key=lambda e: e.size)
 
-        for se in sorted_elements:
-            for p in packed:
-                if sum([e.size for e in p]) + se.size <= volume:
-                    # The item fits in an existing bin
-                    p.append(se)
-                    break
-            else:
-                # The item did not fit in an existing bin, put it in a new bin
-                packed.append([se])
+class DAQLists(Sequence):
+    """Aggregate of DAQList."""
+    
+    def __init__(self, daq_lists: list[DAQList]) -> None:
+        nodes = set(dl.node for dl in daq_lists)
 
-        # Create ODTs and pack into DAQ lists.
-        daq_list_iterator = iter(self._daq_lists)
-        daq_list = next(daq_list_iterator)
-
-        for b in packed:
-            odt = ObjectDescriptorTable(
-                elements=b,
-                number=len(self._odts),
+        if len(nodes) > 1:
+            raise pyccp.CCPError(
+                "All DAQ lists in DAQLists instance must belong to same slave"
             )
-            self._odts.append(odt)
-            if len(daq_list.odts) == daq_list.size:
-                daq_list = next(daq_list_iterator)
-            daq_list.odts.append(odt)
 
-    def _get_daq_lists(self) -> None:
-        self._daq_lists = []
-        size = None
-        i = 0
+        self._node: pyccp.CCPSlave | None = nodes.pop() if nodes else None
+        self._daq_lists = daq_lists
 
-        while size != 0:
-            size, first = self._node.get_daq_size(daq_list_number=i)
-            if size > 0:
-                daq_list = DAQList(
-                    node=self._node,
-                    number=i,
-                    size=size,
-                    first_odt_number=first,
-                )
-                self._daq_lists.append(daq_list)
-            i += 1
+    @property
+    def node(self) -> pyccp.CCPSlave | None:
+        return self._node
+
+    @overload
+    def __getitem__(self, key: int) -> DAQList:
+        ...
+    @overload
+    def __getitem__(self, key: slice) -> DAQLists:
+        ...
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            return DAQLists(self._daq_lists[key])
+        return self._daq_lists[key]
+
+    def __len__(self) -> int:
+        return len(self._daq_lists)
+    
+    def __repr__(self) -> str:
+        return f"{[str(dl) for dl in self]}"
+
+    def start(self, event_channel: int = 0, rate_prescaler: int = 1) -> None:
+        """Start all configured DAQ lists simultaneously.
+        
+        This starts all DAQ lists on slave which have been prepared for synchronized
+        start, including lists which are not part of this aggregate.
+        """
+        for dl in self:
+            if dl:
+                dl.sync(event_channel, rate_prescaler)
+
+        self.node.session_status |= pyccp.SessionStatus.DAQ
+        self.node.start_stop_all(DAQMode.START)
+
+    def stop(self) -> None:
+        """Stop all DAQ lists.
+        
+        This stops all DAQ lists on slave, including lists which are not part of this
+        aggregate.
+        """
+        self.node.start_stop_all(DAQMode.STOP)
+
+    def clear(self) -> None:
+        """Clear DAQ lists."""
+        for dl in self:
+            if dl:
+                dl.clear()
+        self.node.session_status &= ~pyccp.SessionStatus.DAQ
+
+    def pack_elements_into(self, elements: list[Element]) -> None:
+        """Pack elements into DAQ lists.
+
+        Parameters
+        ----------
+        elements : list[Element]
+
+        Raises
+        ------
+        CCPError
+            If elements do not fit in DAQ lists.
+        """
+        odts = iter(pack_elements(elements))
+        self.clear()
+
+        for dl in self:
+            dl.extend(list(islice(odts, dl.size)))
+
+        try:
+            next(odts)
+        except StopIteration:
+            pass
+        else:
+            raise pyccp.CCPError("Elements do not fit in available DAQ lists")
+
+
+def pack_elements(elements: list[Element]) -> list[ODT]:
+    """Pack elements according to the First Fit Descending (FFD) algorithm.
+
+    See https://en.wikipedia.org/wiki/Bin_packing_problem
+
+    Parameters
+    ----------
+    elements : list[Element]
+        List of Elements to be packed into ODTs.
+
+    Returns
+    -------
+    list[ODT]
+        ODTs which can be placed in DAQ lists.
+    """
+    packed = []
+
+    # Pack into bins.
+    for se in sorted(elements, reverse=True, key=lambda e: e.size):
+        for p in packed:
+            if sum([e.size for e in p]) + se.size <= ODT.MAX_SIZE:
+                # The item fits in an existing bin.
+                p.append(se)
+                break
+        else:
+            # The item did not fit in an existing bin, put it in a new bin.
+            packed.append([se])
+
+    return [ODT(elements=b) for b in packed]
